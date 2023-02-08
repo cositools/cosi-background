@@ -1,4 +1,4 @@
-__author__ = 'Paolo Cumani, Jurgen Kiener, Vincent Tatischeff, Andreas Zoglauer'
+__author__ = 'Paolo Cumani, Jurgen Kiener, Vincent Tatischeff, Andreas Zoglauer | Updated by Savitri Gallego'
 
 import numpy as np
 import pandas as pd
@@ -62,7 +62,7 @@ class LEOBackgroundGenerator:
         solar modulation potential in MV at the time of the observation
     """
 
-    def __init__(self, altitude, inclination, solarmodulation=None):
+    def __init__(self, altitude, inclination, GeoCutoff=None, solarmodulation=None ):
         self.Alt = altitude  # instrument altitude (km)
         self.magl = inclination  # orbit inclination (deg.)
         self.geomlat = inclination  # geomagnetic latitude (deg.) TODO
@@ -76,6 +76,7 @@ class LEOBackgroundGenerator:
         else:
             self.solmod = solarmodulation
 
+        #print("solar modulation = {0}".format(self.solmod))
         EarthRadius = R_earth.to('km').value
 
         """ Average Geomagnetic cutoff in GV
@@ -89,8 +90,13 @@ class LEOBackgroundGenerator:
 
         M = g10*R_E*300/10**9  # GV/cm2
 
-        self.AvGeomagCutOff = (M/4*(1+self.Alt/EarthRadius)**(-2.0)
-                               * np.cos(np.deg2rad(self.geomlat))**4)
+        if GeoCutoff is not None :
+            self.AvGeomagCutOff = GeoCutoff
+            
+        else :    
+            self.AvGeomagCutOff =(M/4*(1+self.Alt/EarthRadius)**(-2.0)
+                              * np.cos(np.deg2rad(self.geomlat))**4)
+
 
         AtmosphereHeight = 40  # km
 
@@ -465,17 +471,31 @@ class LEOBackgroundGenerator:
     def SecondaryProtonsDownward(self, E):
         return self.SecondaryProtons(E)[2]
 
-    def AguilarElectronPositron(self):
-        """ Read Table I from Aguilar et al. 2014,
+    def AguilarElectronPositron(self,date=2018):
+        """ Read Table I from Aguilar et al. 2014 or Aguilar et al. 2018 or Aguilar et al. 2019,
             Return a dataframe to be used by
             PrimaryElectrons and PrimaryPositrons
         """
         filename = './Data/AguilarElectronPositron.dat'
-        data = pd.read_table(filename, sep='\s+')
-
-        data["Fluxele"] = data["Fluxele"]/10**10
-        data['Fluxpos'] = data['Fluxpos']/10**10
-
+        filename_2018 = './Data/AguilarElectronPositron_2018.dat'
+        filename_2019 = './Data/AguilarPositron_2019.dat' #to do
+        data_2014 = pd.read_table(filename, sep='\s+')
+        data_2018 = pd.read_csv(filename_2018,sep=" ",skipinitialspace=True)
+        data_2019 = pd.read_csv(filename_2019,sep=" ",skipinitialspace=True)
+        data = pd.DataFrame({})
+        
+        if date == 2014 :
+            data["Fluxele"] = data_2014["Fluxele"]/10**10
+            data['Fluxpos'] = data_2014['Fluxpos']/10**10
+            data["EkeV"] = data_2014["EkeV"]
+        
+        elif date ==2018 :
+            data["Fluxele"] = data_2018["Fluxele"]/10**10
+            data['Fluxpos'] = data_2018['Fluxpos']/10**10
+            data["EkeV"] = data_2018["EGeV"]*1e6 #GeV to keV
+        
+        
+        
         self.PrimElecPosi = data.copy()
 
     def PrimaryElectrons(self, E):
@@ -505,7 +525,7 @@ class LEOBackgroundGenerator:
 
         redfac = 1/(1+(Rigidity/self.AvGeomagCutOff)**-6.0)
 
-        return f(E)*redfac
+        return f(E+self.solmod/1000)*redfac*solmodfac
 
     def PrimaryPositrons(self, E):
         """ Table I from Aguilar et al. 2014,
@@ -534,7 +554,7 @@ class LEOBackgroundGenerator:
 
         redfac = 1/(1+(Rigidity/self.AvGeomagCutOff)**-6.0)
 
-        return f(E)*redfac
+        return f(E+self.solmod/1000)*redfac*solmodfac
 
     def MizunoPl(self, f0, a, E):
         """Function describing a power-law
@@ -639,7 +659,7 @@ class LEOBackgroundGenerator:
         """ Solar modulation factor from Gleeson & Axford 1968"""
         solmodfac = ((EnergyGeV+E0)**2-E0**2)/(
                     (EnergyGeV+E0+self.solmod/1000)**2-E0**2)
-        return f(E)*redfac
+        return f(E+self.solmod/1000)*redfac*solmodfac
 
     def PrimaryAlphas(self, E):
         """ Read Table from Aguilar et al. 2015b,
@@ -669,4 +689,4 @@ class LEOBackgroundGenerator:
         """ Solar modulation factor from Gleeson & Axford 1968"""
         solmodfac = ((EnergyGeV+E0)**2-E0**2)/(
                     (EnergyGeV+E0+2*self.solmod/1000)**2-E0**2)
-        return f(E)*redfac
+        return f(E+2*self.solmod/1000)*redfac*solmodfac

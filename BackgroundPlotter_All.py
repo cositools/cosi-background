@@ -29,11 +29,14 @@ pars.add_argument('-a', '--altitude', type=float, nargs='?',
 pars.add_argument('-o', '--outputpdf', type=str, nargs='?',
                   default="FullSpectrum", help='Name of the output pdf [FullSpectrum]')
 
+pars.add_argument('-c', '--geocutoff', type=float, nargs='?',
+                  default=None, help='Value of the Geocutoff [Average Geocutoff]')
+
 args = pars.parse_args()
 
 Energies = np.logspace(1, 8, num=1000000, endpoint=True, base=10.0)
 
-LeoBack = LEO(args.altitude, args.inclination)
+LeoBack = LEO(args.altitude, args.inclination,args.geocutoff)
 
 LeoBackfunc = [LeoBack.AtmosphericNeutrons, LeoBack.CosmicPhotons,
                LeoBack.PrimaryProtons, LeoBack.SecondaryProtonsUpward,
@@ -85,4 +88,6 @@ legend.get_frame().set_alpha(0.9)
 
 ax1.set_xlabel(r'Energy / MeV', verticalalignment='center', labelpad=20, fontsize=15)
 
-fig1.savefig(args.outputpdf+".pdf", bbox_inches='tight')
+fig1.savefig(args.outputpdf
++ "_{0}km_{1}deg_{2}cutoff".format(args.altitude,args.inclination,args.geocutoff) 
++".pdf", bbox_inches='tight')
