@@ -123,7 +123,7 @@ class LEOBackgroundGenerator:
         """ Low energy neutrons spectrum at the top of the atmosphere
         as calculated in Lingenfelter 1963
         """
-        filename = './Data/Neutrons_Lingenfelter.dat'
+        filename = 'Data/Neutrons_Lingenfelter.dat'
         data = pd.read_table(filename, sep=',')
 
         data["Ener(MeV)"] = data["Ener(MeV)"]
@@ -255,7 +255,7 @@ class LEOBackgroundGenerator:
         for the average Galactic center region (b+-1 deg, l+-2.5deg),
         Return a flux in ph /cm2 /s /keV /sr
         """
-        filename = './Data/LATBackground.dat'
+        filename = 'Data/LATBackground.dat'
         data = pd.read_table(filename, sep='\s+', header=0, comment='#')
 
         fGC = self.log_interp1d(data['Energy'], data['FluxGCAv'], fill="NaN")
@@ -270,7 +270,7 @@ class LEOBackgroundGenerator:
         Galactic center region (b+-1 deg, l+-2.5deg),
         Return a flux in ph /cm2 /s /keV /sr
         """
-        filename = './Data/LATBackground.dat'
+        filename = 'Data/LATBackground.dat'
         data = pd.read_table(filename, sep='\s+', header=0, comment='#')
 
         fDisk = self.log_interp1d(data['Energy'], data['FluxDiskAv'], fill="NaN")
@@ -435,6 +435,7 @@ class LEOBackgroundGenerator:
 
         Rcut = self.AvGeomagCutOff
 
+        
         if Rcut >= 11.5055 and Rcut <= 12.4706:
             FluxU = self.MizunoCutoffpl(0.136, 0.123, 0.155, 0.51, EnergyMeV)
             FluxD = self.MizunoCutoffpl(0.136, 0.123, 0.155, 0.51, EnergyMeV)
@@ -476,9 +477,9 @@ class LEOBackgroundGenerator:
             Return a dataframe to be used by
             PrimaryElectrons and PrimaryPositrons
         """
-        filename = './Data/AguilarElectronPositron.dat'
-        filename_2018 = './Data/AguilarElectronPositron_2018.dat'
-        filename_2019 = './Data/AguilarPositron_2019.dat' #to do
+        filename = 'Data/AguilarElectronPositron.dat'
+        filename_2018 = 'Data/AguilarElectronPositron_2018.dat'
+        filename_2019 = 'Data/AguilarPositron_2019.dat' #to do
         data_2014 = pd.read_table(filename, sep='\s+')
         data_2018 = pd.read_csv(filename_2018,sep=" ",skipinitialspace=True)
         data_2019 = pd.read_csv(filename_2019,sep=" ",skipinitialspace=True)
@@ -591,7 +592,7 @@ class LEOBackgroundGenerator:
         EnergyMeV = 0.001*np.copy(np.asarray(E, dtype=float))
 
         Rcut = self.AvGeomagCutOff
-
+       
         if Rcut >= 10.3872 and Rcut <= 12.4706:
             Flux = self.MizunoBrokenpl(0.3, 2.2, 3000, 4.0, EnergyMeV)
         elif Rcut >= 5.7857 and Rcut <= 10.3872:
@@ -613,7 +614,7 @@ class LEOBackgroundGenerator:
         EnergyMeV = 0.001*np.copy(np.asarray(E, dtype=float))
 
         Rcut = self.AvGeomagCutOff
-
+        
         if Rcut >= 10.3872 and Rcut <= 12.4706:
             Flux = self.MizunoBrokenpl(0.3, 2.2, 3000, 4.0, EnergyMeV)
             ratio = 3.3
@@ -637,7 +638,7 @@ class LEOBackgroundGenerator:
             Rigidity in GV and Flux in /m2 /sr /s /GV
             Return a flux in ph /cm2 /s /keV /sr
         """
-        filename = './Data/AguilarProton.dat'
+        filename = 'Data/AguilarProton.dat'
         data = pd.read_table(filename, sep='\s+')
 
         E0 = ((m_p * c**2).to('GeV')).value
@@ -666,7 +667,7 @@ class LEOBackgroundGenerator:
             Rigidity in GV and Flux in /m2 /sr /s /GV
             Return a flux in ph /cm2 /s /keV /sr
         """
-        filename = './Data/AguilarAlphas.dat'
+        filename = 'Data/AguilarAlphas.dat'
         data = pd.read_table(filename, sep='\s+')
 
         E0 = 2*((m_p * c**2 + m_n * c**2).to('GeV')).value

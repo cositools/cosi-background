@@ -30,7 +30,7 @@ pars.add_argument('-a', '--altitude', type=float, nargs='?',
                   default=550., help='Altitude of the orbit in km [550.]')
 
 pars.add_argument('-el', '--elow', type=float, nargs='?',
-                  default=1, help='Log10 of the lowest energy limit in keV [1]')
+                  default=2, help='Log10 of the lowest energy limit in keV [2]')
                 
                                     
 
@@ -44,6 +44,11 @@ pars.add_argument('-c', '--cutoff', type=float, nargs='?',
 pars.add_argument('-s', '--solarmodulation', type=float, nargs='?',
                   default=650., help='solar modulation (550 min and 1100 max) [650]')
 
+
+pars.add_argument('-o', '--outputpath', type=str, nargs='?',
+                  default="OUTPUT", help='output path')
+
+
 args = pars.parse_args()
 
 Inclination = args.inclination
@@ -53,7 +58,7 @@ Elow = args.elow
 Ehigh = args.ehigh
 
 Geocutoff = args.cutoff
-
+outputpath = args.outputpath
 
 solarmod = args.solarmodulation
 
@@ -83,7 +88,10 @@ fac = [ViewAtmo, ViewSky,ViewSky, 2*np.pi, 2*np.pi, ViewSky, ViewSky, ViewSky,4*
 for i in range(0, len(Megalibfunc)):
 
     Energies = np.logspace(Elow, Ehigh, num=100, endpoint=True, base=10.0)
-    Output = "OUTPUT/%s_Spec_%skm_%sdeg_%scutoff_%ssolarmod.dat" % (Particle[i], int(Altitude), int(Inclination),int(Geocutoff),float(solarmod))
+    if Geocutoff==None :
+        Output = "%s/%s_Spec_%skm_%sdeg_%ssolarmod.dat" % (outputpath,Particle[i], float(Altitude), float(Inclination),float(solarmod))
+    else :
+        Output = "%s/%s_Spec_%skm_%sdeg_%scutoff_%ssolarmod.dat" % (outputpath,Particle[i], float(Altitude), float(Inclination),float(Geocutoff),float(solarmod))
     #print(Megalibfunc[i](Energies))
     IntSpectrum = np.trapz(Megalibfunc[i](Energies),Energies)
     print(Particle[i], IntSpectrum*fac[i], " #/cm^2/s")
