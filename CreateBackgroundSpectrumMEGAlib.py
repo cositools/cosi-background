@@ -135,7 +135,7 @@ for i in range(0, len(Particle)):
     if Geocutoff==None :
         Output = "%s/%s_Spec_%skm_%sdeg_%ssolarmod.dat" % (outputpath,Particle[i], float(Altitude), float(Inclination),float(solarmod))
     else :
-        Output = "%s/%s_Spec_%skm_%sdeg_%scutoff_%ssolarmod.dat" % (outputpath,Particle[i], float(Altitude), float(Inclination),float(Geocutoff),float(solarmod))
+        Output = "{0}/{1}_Spec_{2}km_{3}deg_{4:.3f}cutoff_{5}solarmod.dat".format(outputpath,Particle[i], float(Altitude), float(Inclination),float(Geocutoff),float(solarmod))
     #print(Megalibfunc[i](Energies))
     IntSpectrum = np.trapz(getattr(LEOClass, Particle[i])(Energies),Energies)
     print(Particle[i], IntSpectrum*fac[i], " #/cm^2/s")
