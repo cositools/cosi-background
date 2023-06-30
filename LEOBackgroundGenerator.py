@@ -65,8 +65,7 @@ class LEOBackgroundGenerator:
     def __init__(self, altitude, inclination, GeoCutoff=None, solarmodulation=None ):
         self.Alt = altitude  # instrument altitude (km)
         self.magl = inclination  # orbit inclination (deg.)
-        self.geomlat = inclination  # geomagnetic latitude (deg.) TODO
-        # The inclination was used to approximate the average Magnetic Latitude
+        
 
         """ solar modulation potential (MV): ~550 for solar minimum
                                             ~1100 for solar maximum
@@ -79,30 +78,39 @@ class LEOBackgroundGenerator:
         #print("solar modulation = {0}".format(self.solmod))
         EarthRadius = R_earth.to('km').value
 
-        """ Average Geomagnetic cutoff in GV
-        for a dipole approximations
-        Equation 4 Smart et al. 2005
-        doi:10.1016/j.asr.2004.09.015
-        """
-        R_E = R_earth.to('cm').value
-        # g 01 term (in units of G) from IGRF-12 for 2015
-        g10 = 29442 * 10**(-9) * 10**4  # G
-
-        M = g10*R_E*300/10**9  # GV/cm2
-
-        if GeoCutoff is not None :
-            self.AvGeomagCutOff = GeoCutoff
-            
-        else :    
-            self.AvGeomagCutOff =(M/4*(1+self.Alt/EarthRadius)**(-2.0)
-                              * np.cos(np.deg2rad(self.geomlat))**4)
-
+	    #per default no cutoff (None)
+        self.AvGeomagCutOff = GeoCutoff
 
         AtmosphereHeight = 40  # km
 
         self.HorizonAngle = 90.0 + np.rad2deg(np.arccos(
                             (EarthRadius + AtmosphereHeight)
                             / (EarthRadius+self.Alt)))
+
+
+
+    def ComputeRcut(geomaglat):
+        """ Average Geomagnetic cutoff in GV
+            for a dipole approximations
+            Equation 4 Smart et al. 2005
+            doi:10.1016/j.asr.2004.09.015
+            
+         arguments : geomaglat [rad] 
+         
+         return : cutoff [GV]   
+        """
+        R_E = R_earth.to('cm').value
+        # g 01 term (in units of G) from IGRF-12 for 2020-25
+        g10 = 29405 * 10**(-9) * 10**4  # G
+
+        
+        M = g10*R_E*300/10**9  # GV/cm2
+        Rcut = (M/4*(1+self.Alt/EarthRadius)**(-2.0)
+                             * np.cos(geomaglat)**4)
+                           
+        return Rcut                     
+
+
 
     def log_interp1d(self, xx, yy, fill='extrapolate', kind='linear'):
         """Functions for an interpolation in log-space
@@ -436,31 +444,31 @@ class LEOBackgroundGenerator:
         Rcut = self.AvGeomagCutOff
 
         
-        if Rcut >= 11.5055 and Rcut <= 12.4706:
+        if Rcut >= ComputeRcut(0.2) and Rcut <= ComputeRcut(0):
             FluxU = self.MizunoCutoffpl(0.136, 0.123, 0.155, 0.51, EnergyMeV)
             FluxD = self.MizunoCutoffpl(0.136, 0.123, 0.155, 0.51, EnergyMeV)
-        elif Rcut >= 10.3872 and Rcut <= 11.5055:
+        elif Rcut >= ComputeRcut(0.3) and Rcut <= ComputeRcut(0.2):
             FluxU = self.MizunoBrokenpl(0.1, 0.87, 600, 2.53, EnergyMeV)
             FluxD = self.MizunoBrokenpl(0.1, 0.87, 600, 2.53, EnergyMeV)
-        elif Rcut >= 8.9747 and Rcut <= 10.3872:
+        elif Rcut >= ComputeRcut(0.4) and Rcut <= ComputeRcut(0.3):
             FluxU = self.MizunoBrokenpl(0.1, 1.09, 600, 2.40, EnergyMeV)
             FluxD = self.MizunoBrokenpl(0.1, 1.09, 600, 2.40, EnergyMeV)
-        elif Rcut >= 7.3961 and Rcut <= 8.9747:
+        elif Rcut >= ComputeRcut(0.5) and Rcut <= ComputeRcut(0.4):
             FluxU = self.MizunoBrokenpl(0.1, 1.19, 600, 2.54, EnergyMeV)
             FluxD = self.MizunoBrokenpl(0.1, 1.19, 600, 2.54, EnergyMeV)
-        elif Rcut >= 5.7857 and Rcut <= 7.3961:
+        elif Rcut >= ComputeRcut(0.6) and Rcut <= ComputeRcut(0.5):
             FluxU = self.MizunoBrokenpl(0.1, 1.18, 400, 2.31, EnergyMeV)
             FluxD = self.MizunoBrokenpl(0.1, 1.18, 400, 2.31, EnergyMeV)
-        elif Rcut >= 4.2668 and Rcut <= 5.7857:
+        elif Rcut >= ComputeRcut(0.7) and Rcut <= ComputeRcut(0.6):
             FluxD = self.MizunoBrokenpl(0.13, 1.1, 300, 2.25, EnergyMeV)
             FluxU = self.MizunoBrokenpl(0.13, 1.1, 300, 2.95, EnergyMeV)
-        elif Rcut >= 2.9375 and Rcut <= 4.2668:
+        elif Rcut >= ComputeRcut(0.8) and Rcut <= ComputeRcut(0.7):
             FluxD = self.MizunoBrokenpl(0.2, 1.5, 400, 1.85, EnergyMeV)
             FluxU = self.MizunoBrokenpl(0.2, 1.5, 400, 4.16, EnergyMeV)
-        elif Rcut >= 1.8613 and Rcut <= 2.9375:
+        elif Rcut >= ComputeRcut(0.9) and Rcut <= ComputeRcut(0.8):
             FluxD = self.MizunoCutoffpl(0.23, 0.017, 1.83, 0.177, EnergyMeV)
             FluxU = self.MizunoBrokenpl(0.23, 1.53, 400, 4.68, EnergyMeV)
-        elif Rcut >= 1.0623 and Rcut <= 1.8613:
+        elif Rcut >= ComputeRcut(1.0) and Rcut <= ComputeRcut(0.9):
             FluxD = self.MizunoCutoffpl(0.44, 0.037, 1.98, 0.21, EnergyMeV)
             FluxU = self.MizunoBrokenpl(0.44, 2.25, 400, 3.09, EnergyMeV)
 
@@ -524,9 +532,15 @@ class LEOBackgroundGenerator:
         solmodfac = ((EnergyGeV+E0)**2-E0**2)/(
                     (EnergyGeV+E0+self.solmod/1000)**2-E0**2)
 
-        redfac = 1/(1+(Rigidity/self.AvGeomagCutOff)**-6.0)
 
-        return f(E+self.solmod/1000)*redfac*solmodfac
+
+        if self.AvGeomagCutOff is not None :
+            redfac = 1/(1+(Rigidity/self.AvGeomagCutOff)**-6.0)
+            
+            return f(E+self.solmod/1000)*redfac*solmodfac    
+        
+        else :
+            return f(E+self.solmod/1000)*solmodfac
 
     def PrimaryPositrons(self, E):
         """ Table I from Aguilar et al. 2014,
@@ -553,10 +567,17 @@ class LEOBackgroundGenerator:
         solmodfac = ((EnergyGeV+E0)**2-E0**2)/(
                     (EnergyGeV+E0+self.solmod/1000)**2-E0**2)
 
-        redfac = 1/(1+(Rigidity/self.AvGeomagCutOff)**-6.0)
+        if self.AvGeomagCutOff is not None :
+        
+            redfac = 1/(1+(Rigidity/self.AvGeomagCutOff)**-6.0)
 
-        return f(E+self.solmod/1000)*redfac*solmodfac
-
+            return f(E+self.solmod/1000)*redfac*solmodfac
+            
+        else :
+            
+            return f(E+self.solmod/1000)*solmodfac
+            
+            
     def MizunoPl(self, f0, a, E):
         """Function describing a power-law
         """
@@ -593,15 +614,15 @@ class LEOBackgroundGenerator:
 
         Rcut = self.AvGeomagCutOff
        
-        if Rcut >= 10.3872 and Rcut <= 12.4706:
+        if Rcut >= ComputeRcut(0.3) and Rcut <= ComputeRcut(0.0):
             Flux = self.MizunoBrokenpl(0.3, 2.2, 3000, 4.0, EnergyMeV)
-        elif Rcut >= 5.7857 and Rcut <= 10.3872:
+        elif Rcut >= ComputeRcut(0.6) and Rcut <= ComputeRcut(0.3):
             Flux = self.MizunoPl(0.3, 2.7, EnergyMeV)
-        elif Rcut >= 2.9375 and Rcut <= 5.7857:
+        elif Rcut >= ComputeRcut(0.8) and Rcut <= ComputeRcut(0.6):
             Flux = self.MizunoPlhump(0.3, 3.3, 2/10000, 1.5, 2.3, EnergyMeV)
-        elif Rcut >= 1.8613 and Rcut <= 2.9375:
+        elif Rcut >= ComputeRcut(0.9) and Rcut <= ComputeRcut(0.8):
             Flux = self.MizunoPlhump(0.3, 3.5, 1.6/1000, 2.0, 1.6, EnergyMeV)
-        elif Rcut >= 1.0623 and Rcut <= 1.8613:
+        elif Rcut >= ComputeRcut(1.0) and Rcut <= ComputeRcut(0.9):
             Flux = self.MizunoPl(0.3, 2.5, EnergyMeV)
 
         return Flux/10**7
@@ -615,19 +636,19 @@ class LEOBackgroundGenerator:
 
         Rcut = self.AvGeomagCutOff
         
-        if Rcut >= 10.3872 and Rcut <= 12.4706:
+        if Rcut >= ComputeRcut(0.3) and Rcut <= ComputeRcut(0.0):
             Flux = self.MizunoBrokenpl(0.3, 2.2, 3000, 4.0, EnergyMeV)
             ratio = 3.3
-        elif Rcut >= 5.7857 and Rcut <= 10.3872:
+        elif Rcut >= ComputeRcut(0.6) and Rcut <= ComputeRcut(0.3):
             Flux = self.MizunoPl(0.3, 2.7, EnergyMeV)
             ratio = 1.66
-        elif Rcut >= 2.9375 and Rcut <= 5.7857:
+        elif Rcut >= ComputeRcut(0.8) and Rcut <= ComputeRcut(0.6):
             Flux = self.MizunoPlhump(0.3, 3.3, 2/10000, 1.5, 2.3, EnergyMeV)
             ratio = 1.0
-        elif Rcut >= 1.8613 and Rcut <= 2.9375:
+        elif Rcut >= ComputeRcut(0.9) and Rcut <= ComputeRcut(0.8):
             Flux = self.MizunoPlhump(0.3, 3.5, 1.6/1000, 2.0, 1.6, EnergyMeV)
             ratio = 1.0
-        elif Rcut >= 1.0623 and Rcut <= 1.8613:
+        elif Rcut >= ComputeRcut(1.0) and Rcut <= ComputeRcut(0.9):
             Flux = self.MizunoPl(0.3, 2.5, EnergyMeV)
             ratio = 1.0
 
@@ -654,14 +675,23 @@ class LEOBackgroundGenerator:
         f = self.log_interp1d(data['RigidityGV'].loc[data['Flux'] > 0.],
                               data['Flux'].loc[data['Flux'] > 0.])
 
-        """ Geomagnetic modulation factor from Mizuno et al. 2004"""
-        redfac = 1/(1+(Rigidity/self.AvGeomagCutOff)**-12.0)
+        
 
         """ Solar modulation factor from Gleeson & Axford 1968"""
         solmodfac = ((EnergyGeV+E0)**2-E0**2)/(
                     (EnergyGeV+E0+self.solmod/1000)**2-E0**2)
-        return f(E+self.solmod/1000)*redfac*solmodfac
-
+                    
+        if self.AvGeomagCutOff is not None :
+                    
+            """ Geomagnetic modulation factor from Mizuno et al. 2004"""
+            redfac = 1/(1+(Rigidity/self.AvGeomagCutOff)**-12.0)            
+                    
+            return f(E+self.solmod/1000)*redfac*solmodfac
+            
+        else : 
+            
+            return f(E+self.solmod/1000)*solmodfac
+            
     def PrimaryAlphas(self, E):
         """ Read Table from Aguilar et al. 2015b,
             Rigidity in GV and Flux in /m2 /sr /s /GV
@@ -684,10 +714,21 @@ class LEOBackgroundGenerator:
         f = self.log_interp1d(data['RigidityGV'].loc[data['Flux'] > 0.],
                               data['Flux'].loc[data['Flux'] > 0.])
 
-        """ Geomagnetic modulation factor from Mizuno et al. 2004"""
-        redfac = 1/(1+(Rigidity/self.AvGeomagCutOff)**-12.0)
+        
 
         """ Solar modulation factor from Gleeson & Axford 1968"""
         solmodfac = ((EnergyGeV+E0)**2-E0**2)/(
                     (EnergyGeV+E0+2*self.solmod/1000)**2-E0**2)
-        return f(E+2*self.solmod/1000)*redfac*solmodfac
+
+        
+        if self.AvGeomagCutOff is not None:
+            """ Geomagnetic modulation factor from Mizuno et al. 2004"""
+            redfac = 1/(1+(Rigidity/self.AvGeomagCutOff)**-12.0)
+                
+            return f(E+2*self.solmod/1000)*redfac*solmodfac
+        
+        else : 
+            return f(E+2*self.solmod/1000)*solmodfac
+        
+        
+        
