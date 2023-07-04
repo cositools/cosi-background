@@ -46,7 +46,7 @@ pars.add_argument('-s', '--solarmodulation', type=float, nargs='?',
 
 
 pars.add_argument('-o', '--outputpath', type=str, nargs='?',
-                  default="OUTPUT", help='output path')
+                  default="./", help='output path')
 
 
 pars.add_argument('-f','--components',type=str,nargs='?',default=None,help=
@@ -131,7 +131,7 @@ else :
             fac.append(4*np.pi)            
 
 # if cutoff is not set, we can do only the Primary components
-if Geocutoff and components is None :
+if Geocutoff is None and components is None :
     Particle = [ 
          "CosmicPhotons", 
          "PrimaryProtons",
