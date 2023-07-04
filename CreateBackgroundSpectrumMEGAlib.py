@@ -99,11 +99,13 @@ if components == None :
          "PrimaryPositrons", "SecondaryElectrons", "SecondaryPositrons",
          "AlbedoPhotons"
          ]
+    fac = [ViewAtmo, ViewSky,ViewSky, 2*np.pi, 2*np.pi, ViewSky, ViewSky, ViewSky,4*np.pi,4*np.pi,ViewAtmo]         
 
 else :
 
 
     Particle = components.split(",")
+    fac =[]
     if Geocutoff is None :
         for f in Particle :
             if f in ["AtmosphericNeutrons", 
@@ -114,20 +116,32 @@ else :
                     "AlbedoPhotons"] :
                         print("Error : If cutoff not set, you need to choose a Primary components (proton,alpha,etc...) or Cosmic photon")
                         sys.exit()
+    #solid angle                    
+    for f in Particle:
+        if f == "AtmosphericNeutrons" or f=="AlbedoPhotons":
+            fac.append(ViewAtmo)
+            
+        if f.startswith("Primary") or f == "CosmicPhotons":
+            fac.append(ViewSky)
+          
+        if f.startswith("SecondaryProtons"):
+            fac.append(2*np.pi)                             
                     
+        if f == "SecondaryElectrons" or f == "SecondaryPositrons" :
+            fac.append(4*np.pi)            
 
 # if cutoff is not set, we can do only the Primary components
 if Geocutoff and components is None :
-     Particle = [ 
+    Particle = [ 
          "CosmicPhotons", 
          "PrimaryProtons",
          "PrimaryAlphas", "PrimaryElectrons",
          "PrimaryPositrons" 
          ]    
+    fac = [ViewSky,ViewSky,ViewSky,ViewSky,ViewSky]
 
 
 
-fac = [ViewAtmo, ViewSky,ViewSky, 2*np.pi, 2*np.pi, ViewSky, ViewSky, ViewSky,4*np.pi,4*np.pi,ViewAtmo]
 
 for i in range(0, len(Particle)):
 
@@ -135,7 +149,7 @@ for i in range(0, len(Particle)):
     if Geocutoff==None :
         Output = "%s/%s_Spec_%skm_%sdeg_%ssolarmod.dat" % (outputpath,Particle[i], float(Altitude), float(Inclination),float(solarmod))
     else :
-        Output = "{0}/{1}_Spec_{2}km_{3}deg_{4:.3f}cutoff_{5}solarmod.dat".format(outputpath,Particle[i], float(Altitude), float(Inclination),float(Geocutoff),float(solarmod))
+        Output = "%s/%s_Spec_%skm_%sdeg_%scutoff_%ssolarmod.dat" % (outputpath,Particle[i], float(Altitude), float(Inclination),float(Geocutoff),float(solarmod))
     #print(Megalibfunc[i](Energies))
     IntSpectrum = np.trapz(getattr(LEOClass, Particle[i])(Energies),Energies)
     print(Particle[i], IntSpectrum*fac[i], " #/cm^2/s")
