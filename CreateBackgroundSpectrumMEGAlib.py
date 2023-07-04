@@ -23,6 +23,9 @@ pars = argparse.ArgumentParser(description='Create a .dat file containing '
                                + 'for the Step1 *.source for Activation '
                                + 'Simulations with MEGAlib.')
 
+pars.add_argument("-g","--geomlat",type=float,nargs='?',
+                  default=None,help="geomagnetic latitude in rad")
+
 pars.add_argument('-i', '--inclination', type=float, nargs='?',
                   default=0., help='Inclination of the orbit in degree [0.]')
 
@@ -39,7 +42,7 @@ pars.add_argument('-eh', '--ehigh', type=float, nargs='?',
 
 
 pars.add_argument('-c', '--cutoff', type=float, nargs='?',
-                  default=None, help='Value of the geocutoff [Average cutoff]')
+                  default=None, help='Value of the geocutoff [compute with geomlat]')
                   
 pars.add_argument('-s', '--solarmodulation', type=float, nargs='?',
                   default=650., help='solar modulation (550 min and 1100 max) [650]')
@@ -47,6 +50,8 @@ pars.add_argument('-s', '--solarmodulation', type=float, nargs='?',
 
 pars.add_argument('-o', '--outputpath', type=str, nargs='?',
                   default="./", help='output path')
+
+
 
 
 pars.add_argument('-f','--components',type=str,nargs='?',default=None,help=
@@ -68,6 +73,7 @@ pars.add_argument('-f','--components',type=str,nargs='?',default=None,help=
 
 args = pars.parse_args()
 
+Geomlat = args.geomlat
 Inclination = args.inclination
 Altitude = args.altitude
 
@@ -82,15 +88,23 @@ solarmod = args.solarmodulation
 components = args.components
 
 
-LEOClass = LEO(1.0*Altitude, 1.0*Inclination,Geocutoff,solarmod)
+LEOClass = LEO(1.0*Altitude, 1.0*Inclination,Geomlat,Geocutoff,solarmod)
 
 ViewAtmo = 2*np.pi * (np.cos(np.deg2rad(LEOClass.HorizonAngle)) + 1)
 ViewSky = 2*np.pi * (1-np.cos(np.deg2rad(LEOClass.HorizonAngle)))
 
 
+if Geomlat is None and Geocutoff is None :
+    print("Error : You need to enter atleast a cut off rigidity or a geomag lat value")
+    sys.exit()
+
+
 
 if components == None :
 
+    if Geomlat is None :
+        print("Error : You need to enter a geomagnetic lat (option -g) value if you want the component AtmosphericNeutrons ! ")
+        sys.exit()
 
     Particle = ["AtmosphericNeutrons", 
          "CosmicPhotons", 
@@ -106,18 +120,15 @@ else :
 
     Particle = components.split(",")
     fac =[]
-    if Geocutoff is None :
-        for f in Particle :
-            if f in ["AtmosphericNeutrons", 
-                    "SecondaryProtonsUpward",
-                    "SecondaryProtonsDownward", 
-                    "SecondaryElectrons", 
-                    "SecondaryPositrons",
-                    "AlbedoPhotons"] :
-                        print("Error : If cutoff not set, you need to choose a Primary components (proton,alpha,etc...) or Cosmic photon")
-                        sys.exit()
+    
+
     #solid angle                    
     for f in Particle:
+    
+        if f == "AtmosphericNeutrons" and Geomlat is None :  
+            print("Error : You need to enter a geomagnetic lat (option -g) value if "+ 
+                    "you want the component AtmosphericNeutrons ! ")
+            sys.exit()
         if f == "AtmosphericNeutrons" or f=="AlbedoPhotons":
             fac.append(ViewAtmo)
             
@@ -130,15 +141,7 @@ else :
         if f == "SecondaryElectrons" or f == "SecondaryPositrons" :
             fac.append(4*np.pi)            
 
-# if cutoff is not set, we can do only the Primary components
-if Geocutoff is None and components is None :
-    Particle = [ 
-         "CosmicPhotons", 
-         "PrimaryProtons",
-         "PrimaryAlphas", "PrimaryElectrons",
-         "PrimaryPositrons" 
-         ]    
-    fac = [ViewSky,ViewSky,ViewSky,ViewSky,ViewSky]
+
 
 
 
