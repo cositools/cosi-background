@@ -65,8 +65,8 @@ class LEOBackgroundGenerator:
     def __init__(self, altitude, inclination, geomlat,GeoCutoff=None, solarmodulation=None ):
         self.Alt = altitude  # instrument altitude (km)
         self.magl = inclination  # orbit inclination (deg.)
-        self.geomlat = geomlat  
-         
+        self.geomlat = geomlat  #geomagnetic latitude (rad)
+        self.AvGeomagCutOff = GeoCutoff #cutoff rigidity (GV)
                 
         
 
