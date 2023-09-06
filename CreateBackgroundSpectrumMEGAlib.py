@@ -38,7 +38,7 @@ pars.add_argument('-el', '--elow', type=float, nargs='?',
                                     
 
 pars.add_argument('-eh', '--ehigh', type=float, nargs='?',
-                  default=8, help='Log10 of the highest energy limit in keV [8]')
+                  default=10, help='Log10 of the highest energy limit in keV [10]')
 
 
 pars.add_argument('-c', '--cutoff', type=float, nargs='?',
