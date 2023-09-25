@@ -22,6 +22,7 @@ The macros are written for Python3. It uses the following packages:
 * Scipy
 * Matplotlib
 * Pandas
+* aacgmv2
 
 <h2>Description</h2>
 
