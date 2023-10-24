@@ -421,7 +421,7 @@ if component == "AtmosphericNeutrons" :
         "ActivationStep3.ActivationSources                NeutronAtm_Activation.dat\n")
     f.close()
 
-if component == "SecondaryProtons" :
+if component == "SecondaryProtonsUpward" or component == "SecondaryProtonsDownward"  :
 
     # Secondary Protons (step 1)
     f = open("SecondaryProtons_step1.source", "w")
