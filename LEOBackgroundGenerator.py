@@ -158,7 +158,7 @@ class LEOBackgroundGenerator:
         """ Solar activity calculated from the solar modulation
         as linear between minimum and maximum (page 10 Kole et al. 2015)
         """
-        solac = (self.solmod - 250.0)/859.0
+        solac = (self.solmod - 250.0)/1109.0
 
         Pressure = 0.  # in hPa
 
