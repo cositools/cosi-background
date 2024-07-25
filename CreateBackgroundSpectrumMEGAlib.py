@@ -51,9 +51,9 @@ ViewSky = 2*np.pi * (1-np.cos(np.deg2rad(LEOClass.HorizonAngle)))
 Particle = ["AtmosphericNeutrons", "PrimaryProtons", "SecondaryProtonsUpward",
             "SecondaryProtonsDownward", "PrimaryAlphas", "CosmicPhotons", "AlbedoPhotons"]
 
-Megalibfunc = [LEOClass.AtmosphericNeutrons, LEOClass.PrimaryProtons,
+Megalibfunc = [LEOClass.AtmosphericNeutrons, LEOClass.PrimaryProtons_HelMod,
                LEOClass.SecondaryProtonsUpward, LEOClass.SecondaryProtonsDownward,
-               LEOClass.PrimaryAlphas, LEOClass.CosmicPhotons, LEOClass.AlbedoPhotons]
+               LEOClass.PrimaryAlphas_HelMod, LEOClass.CosmicPhotons, LEOClass.AlbedoPhotons]
 
 fac = [ViewAtmo, ViewSky, 2*np.pi, 2*np.pi, ViewSky, ViewSky, ViewAtmo]
 

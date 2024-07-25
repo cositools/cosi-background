@@ -641,6 +641,35 @@ class LEOBackgroundGenerator:
                     (EnergyGeV+E0+self.solmod/1000)**2-E0**2)
         return f(E)*redfac
 
+    def PrimaryProtons_HelMod(self, E):
+        """ Read Table from HelMod public online tool,
+            Rigidity in GV and Flux in /m2 /sr /s /GV
+            Return a flux in ph /cm2 /s /keV /sr
+            For data challenge 3. HARDCODED GEOCUTOFF =10 GV
+        """
+        filename = './Data/HelmodProton_Mar27_Jun27.dat'
+        data = pd.read_table(filename, sep='\s+')
+
+        E0 = ((m_p * c**2).to('GeV')).value
+
+        data["Flux"] = data["Flux"]*data['RigidityGV']
+        data['RigidityGV'] = (np.sqrt(E0**2+data['RigidityGV']**2)-E0)*10**6
+        data["Flux"] = data["Flux"]/(data['RigidityGV'])/10**4
+
+        EnergyGeV = 0.000001*np.asarray(E, dtype=float)
+
+        Rigidity = np.sqrt(EnergyGeV*EnergyGeV + 2*EnergyGeV*E0)
+
+        f = self.log_interp1d(data['RigidityGV'].loc[data['Flux'] > 0.],
+                              data['Flux'].loc[data['Flux'] > 0.])
+
+        """ Geomagnetic modulation factor from Mizuno et al. 2004"""
+        redfac = 1/(1+(Rigidity/10.)**-12.0)#HARDCODED 10GV!!!
+        
+        return f(E)*redfac
+
+
+    
     def PrimaryAlphas(self, E):
         """ Read Table from Aguilar et al. 2015b,
             Rigidity in GV and Flux in /m2 /sr /s /GV
@@ -669,4 +698,33 @@ class LEOBackgroundGenerator:
         """ Solar modulation factor from Gleeson & Axford 1968"""
         solmodfac = ((EnergyGeV+E0)**2-E0**2)/(
                     (EnergyGeV+E0+2*self.solmod/1000)**2-E0**2)
+        return f(E)*redfac
+
+    def PrimaryAlphas_HelMod(self, E):
+        """ Read Table from HelMod public online tool
+            Rigidity in GV and Flux in /m2 /sr /s /GV
+            Return a flux in ph /cm2 /s /keV /sr
+            For data challenge 3. HARDCODED GEOCUTOFF =10 GV
+
+        """
+        filename = './Data/HelmodHelium_Mar27_Jun27.dat'
+        data = pd.read_table(filename, sep='\s+')
+
+        E0 = 2*((m_p * c**2 + m_n * c**2).to('GeV')).value
+
+        data["Flux"] = data["Flux"]*data['RigidityGV']
+        data['RigidityGV'] = 4*(np.sqrt(E0**2+(data['RigidityGV']/2)**2)-E0)*10**6
+
+        data["Flux"] = data["Flux"]/(data['RigidityGV'])/10**4
+
+        EnergyGeV = 0.000001*np.asarray(E, dtype=float)
+
+        Rigidity = np.sqrt(EnergyGeV*EnergyGeV + 2*EnergyGeV*E0)/2.
+
+        f = self.log_interp1d(data['RigidityGV'].loc[data['Flux'] > 0.],
+                              data['Flux'].loc[data['Flux'] > 0.])
+
+        """ Geomagnetic modulation factor from Mizuno et al. 2004"""
+        redfac = 1/(1+(Rigidity/10.)**-12.0)#HARDCODED 10GV!!!
+
         return f(E)*redfac
