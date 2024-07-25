@@ -546,7 +546,7 @@ class LEOBackgroundGenerator:
         
         redfac = 1/(1+(Rigidity/self.AvGeomagCutOff)**-6.0)
             
-        return f(E+self.solmod/1000)*redfac   
+        return f(E)*redfac   
         
         
 
@@ -579,7 +579,7 @@ class LEOBackgroundGenerator:
         
         redfac = 1/(1+(Rigidity/self.AvGeomagCutOff)**-6.0)
 
-        return f(E+self.solmod/1000)*redfac
+        return f(E)*redfac
             
        
             
@@ -757,6 +757,7 @@ class LEOBackgroundGenerator:
         redfac = 1/(1+(Rigidity/self.AvGeomagCutOff)**-12.0)
                 
         return f(E)*redfac
+
         
     def PrimaryAlphas_HelMod(self, E):
         """ Read Table from HelMod public online tool
