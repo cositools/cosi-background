@@ -546,7 +546,7 @@ class LEOBackgroundGenerator:
         
         redfac = 1/(1+(Rigidity/self.AvGeomagCutOff)**-6.0)
             
-        return f(E+self.solmod/1000)*redfac   
+        return f(E)*redfac   
         
         
 
@@ -579,7 +579,7 @@ class LEOBackgroundGenerator:
         
         redfac = 1/(1+(Rigidity/self.AvGeomagCutOff)**-6.0)
 
-        return f(E+self.solmod/1000)*redfac
+        return f(E)*redfac
             
        
             
@@ -694,7 +694,7 @@ class LEOBackgroundGenerator:
         """ Geomagnetic modulation factor from Mizuno et al. 2004"""
         redfac = 1/(1+(Rigidity/self.AvGeomagCutOff)**-12.0)            
                     
-        return f(E+self.solmod/1000)*redfac
+        return f(E)*redfac
             
         
             
@@ -731,7 +731,7 @@ class LEOBackgroundGenerator:
         """ Geomagnetic modulation factor from Mizuno et al. 2004"""
         redfac = 1/(1+(Rigidity/self.AvGeomagCutOff)**-12.0)
                 
-        return f(E+2*self.solmod/1000)*redfac
+        return f(E)*redfac
         
         
         
