@@ -1,11 +1,11 @@
-__author__ = 'Paolo Cumani, Jurgen Kiener, Vincent Tatischeff, Andreas Zoglauer | Updated by Savitri Gallego'
+__author__ = 'Paolo Cumani, Jurgen Kiener, Vincent Tatischeff, Andreas Zoglauer'
 
 import numpy as np
 import pandas as pd
 from astropy.constants import R_earth, m_p, m_n, c
 from scipy.optimize import fsolve
 from scipy.interpolate import interp1d
-import aacgmv2
+
 
 class LEOBackgroundGenerator:
     """
@@ -62,13 +62,11 @@ class LEOBackgroundGenerator:
         solar modulation potential in MV at the time of the observation
     """
 
-    def __init__(self, altitude, inclination, geomlat,GeoCutoff=None, solarmodulation=None ):
+    def __init__(self, altitude, inclination, solarmodulation=None):
         self.Alt = altitude  # instrument altitude (km)
         self.magl = inclination  # orbit inclination (deg.)
-        self.geomlat = geomlat  #geomagnetic latitude (rad)
-        self.AvGeomagCutOff = GeoCutoff #cutoff rigidity (GV)
-                
-        
+        self.geomlat = inclination  # geomagnetic latitude (deg.) TODO
+        # The inclination was used to approximate the average Magnetic Latitude
 
         """ solar modulation potential (MV): ~550 for solar minimum
                                             ~1100 for solar maximum
@@ -78,48 +76,27 @@ class LEOBackgroundGenerator:
         else:
             self.solmod = solarmodulation
 
-        #print("solar modulation = {0}".format(self.solmod))
-
-
         EarthRadius = R_earth.to('km').value
+
+        """ Average Geomagnetic cutoff in GV
+        for a dipole approximations
+        Equation 4 Smart et al. 2005
+        doi:10.1016/j.asr.2004.09.015
+        """
+        R_E = R_earth.to('cm').value
+        # g 01 term (in units of G) from IGRF-12 for 2015
+        g10 = 29442 * 10**(-9) * 10**4  # G
+
+        M = g10*R_E*300/10**9  # GV/cm2
+
+        self.AvGeomagCutOff = (M/4*(1+self.Alt/EarthRadius)**(-2.0)
+                               * np.cos(np.deg2rad(self.geomlat))**4)
 
         AtmosphereHeight = 40  # km
 
         self.HorizonAngle = 90.0 + np.rad2deg(np.arccos(
                             (EarthRadius + AtmosphereHeight)
                             / (EarthRadius+self.Alt)))
-
-
-        
-        
-        if GeoCutoff is None :
-            self.AvGeomagCutOff = self.ComputeRcut(self.geomlat)
-        
-
-    def ComputeRcut(self,geomaglat):
-        """ Average Geomagnetic cutoff in GV
-            for a dipole approximations
-            Equation 4 Smart et al. 2005
-            doi:10.1016/j.asr.2004.09.015
-            
-         arguments : geomaglat [rad] 
-         
-         return : cutoff [GV]   
-        """
-        EarthRadius = R_earth.to('km').value
-        R_E = R_earth.to('cm').value
-        # g 01 term (in units of G) from IGRF-12 for 2020-25
-        g10 = 29405 * 10**(-9) * 10**4  # G
-
-        
-        M = g10*R_E*300/10**9  # GV/cm2
-        
-        Rcut = (M/4*(1+self.Alt/EarthRadius)**(-2.0)
-                             * np.cos(geomaglat)**4)
-                           
-        return Rcut                     
-
-
 
     def log_interp1d(self, xx, yy, fill='extrapolate', kind='linear'):
         """Functions for an interpolation in log-space
@@ -140,7 +117,7 @@ class LEOBackgroundGenerator:
         """ Low energy neutrons spectrum at the top of the atmosphere
         as calculated in Lingenfelter 1963
         """
-        filename = 'Data/Neutrons_Lingenfelter.dat'
+        filename = './Data/Neutrons_Lingenfelter.dat'
         data = pd.read_table(filename, sep=',')
 
         data["Ener(MeV)"] = data["Ener(MeV)"]
@@ -158,7 +135,7 @@ class LEOBackgroundGenerator:
         """ Solar activity calculated from the solar modulation
         as linear between minimum and maximum (page 10 Kole et al. 2015)
         """
-        solac = (self.solmod - 250.0)/1109.0
+        solac = (self.solmod - 250.0)/859.0
 
         Pressure = 0.  # in hPa
 
@@ -272,7 +249,7 @@ class LEOBackgroundGenerator:
         for the average Galactic center region (b+-1 deg, l+-2.5deg),
         Return a flux in ph /cm2 /s /keV /sr
         """
-        filename = 'Data/LATBackground.dat'
+        filename = './Data/LATBackground.dat'
         data = pd.read_table(filename, sep='\s+', header=0, comment='#')
 
         fGC = self.log_interp1d(data['Energy'], data['FluxGCAv'], fill="NaN")
@@ -287,7 +264,7 @@ class LEOBackgroundGenerator:
         Galactic center region (b+-1 deg, l+-2.5deg),
         Return a flux in ph /cm2 /s /keV /sr
         """
-        filename = 'Data/LATBackground.dat'
+        filename = './Data/LATBackground.dat'
         data = pd.read_table(filename, sep='\s+', header=0, comment='#')
 
         fDisk = self.log_interp1d(data['Energy'], data['FluxDiskAv'], fill="NaN")
@@ -452,32 +429,31 @@ class LEOBackgroundGenerator:
 
         Rcut = self.AvGeomagCutOff
 
-        
-        if Rcut >= self.ComputeRcut(0.2) and Rcut <= self.ComputeRcut(0):
+        if Rcut >= 11.5055 and Rcut <= 12.4706:
             FluxU = self.MizunoCutoffpl(0.136, 0.123, 0.155, 0.51, EnergyMeV)
             FluxD = self.MizunoCutoffpl(0.136, 0.123, 0.155, 0.51, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(0.3) and Rcut <= self.ComputeRcut(0.2):
+        elif Rcut >= 10.3872 and Rcut <= 11.5055:
             FluxU = self.MizunoBrokenpl(0.1, 0.87, 600, 2.53, EnergyMeV)
             FluxD = self.MizunoBrokenpl(0.1, 0.87, 600, 2.53, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(0.4) and Rcut <= self.ComputeRcut(0.3):
+        elif Rcut >= 8.9747 and Rcut <= 10.3872:
             FluxU = self.MizunoBrokenpl(0.1, 1.09, 600, 2.40, EnergyMeV)
             FluxD = self.MizunoBrokenpl(0.1, 1.09, 600, 2.40, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(0.5) and Rcut <= self.ComputeRcut(0.4):
+        elif Rcut >= 7.3961 and Rcut <= 8.9747:
             FluxU = self.MizunoBrokenpl(0.1, 1.19, 600, 2.54, EnergyMeV)
             FluxD = self.MizunoBrokenpl(0.1, 1.19, 600, 2.54, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(0.6) and Rcut <= self.ComputeRcut(0.5):
+        elif Rcut >= 5.7857 and Rcut <= 7.3961:
             FluxU = self.MizunoBrokenpl(0.1, 1.18, 400, 2.31, EnergyMeV)
             FluxD = self.MizunoBrokenpl(0.1, 1.18, 400, 2.31, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(0.7) and Rcut <= self.ComputeRcut(0.6):
+        elif Rcut >= 4.2668 and Rcut <= 5.7857:
             FluxD = self.MizunoBrokenpl(0.13, 1.1, 300, 2.25, EnergyMeV)
             FluxU = self.MizunoBrokenpl(0.13, 1.1, 300, 2.95, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(0.8) and Rcut <= self.ComputeRcut(0.7):
+        elif Rcut >= 2.9375 and Rcut <= 4.2668:
             FluxD = self.MizunoBrokenpl(0.2, 1.5, 400, 1.85, EnergyMeV)
             FluxU = self.MizunoBrokenpl(0.2, 1.5, 400, 4.16, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(0.9) and Rcut <= self.ComputeRcut(0.8):
+        elif Rcut >= 1.8613 and Rcut <= 2.9375:
             FluxD = self.MizunoCutoffpl(0.23, 0.017, 1.83, 0.177, EnergyMeV)
             FluxU = self.MizunoBrokenpl(0.23, 1.53, 400, 4.68, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(1.0) and Rcut <= self.ComputeRcut(0.9):
+        elif Rcut >= 1.0623 and Rcut <= 1.8613:
             FluxD = self.MizunoCutoffpl(0.44, 0.037, 1.98, 0.21, EnergyMeV)
             FluxU = self.MizunoBrokenpl(0.44, 2.25, 400, 3.09, EnergyMeV)
 
@@ -489,31 +465,17 @@ class LEOBackgroundGenerator:
     def SecondaryProtonsDownward(self, E):
         return self.SecondaryProtons(E)[2]
 
-    def AguilarElectronPositron(self,date=2018):
-        """ Read Table I from Aguilar et al. 2014 or Aguilar et al. 2018 or Aguilar et al. 2019,
+    def AguilarElectronPositron(self):
+        """ Read Table I from Aguilar et al. 2014,
             Return a dataframe to be used by
             PrimaryElectrons and PrimaryPositrons
         """
-        filename = 'Data/AguilarElectronPositron.dat'
-        filename_2018 = 'Data/AguilarElectronPositron_2018.dat'
-        filename_2019 = 'Data/AguilarPositron_2019.dat' #to do
-        data_2014 = pd.read_table(filename, sep='\s+')
-        data_2018 = pd.read_csv(filename_2018,sep=" ",skipinitialspace=True)
-        data_2019 = pd.read_csv(filename_2019,sep=" ",skipinitialspace=True)
-        data = pd.DataFrame({})
-        
-        if date == 2014 :
-            data["Fluxele"] = data_2014["Fluxele"]/10**10
-            data['Fluxpos'] = data_2014['Fluxpos']/10**10
-            data["EkeV"] = data_2014["EkeV"]
-        
-        elif date ==2018 :
-            data["Fluxele"] = data_2018["Fluxele"]/10**10
-            data['Fluxpos'] = data_2018['Fluxpos']/10**10
-            data["EkeV"] = data_2018["EGeV"]*1e6 #GeV to keV
-        
-        
-        
+        filename = './Data/AguilarElectronPositron.dat'
+        data = pd.read_table(filename, sep='\s+')
+
+        data["Fluxele"] = data["Fluxele"]/10**10
+        data['Fluxpos'] = data['Fluxpos']/10**10
+
         self.PrimElecPosi = data.copy()
 
     def PrimaryElectrons(self, E):
@@ -541,14 +503,9 @@ class LEOBackgroundGenerator:
         solmodfac = ((EnergyGeV+E0)**2-E0**2)/(
                     (EnergyGeV+E0+self.solmod/1000)**2-E0**2)
 
-
-
-        
         redfac = 1/(1+(Rigidity/self.AvGeomagCutOff)**-6.0)
-            
-        return f(E+self.solmod/1000)*redfac   
-        
-        
+
+        return f(E)*redfac
 
     def PrimaryPositrons(self, E):
         """ Table I from Aguilar et al. 2014,
@@ -575,17 +532,10 @@ class LEOBackgroundGenerator:
         solmodfac = ((EnergyGeV+E0)**2-E0**2)/(
                     (EnergyGeV+E0+self.solmod/1000)**2-E0**2)
 
-        
-        
         redfac = 1/(1+(Rigidity/self.AvGeomagCutOff)**-6.0)
 
-        return f(E+self.solmod/1000)*redfac
-            
-       
-            
+        return f(E)*redfac
 
-            
-            
     def MizunoPl(self, f0, a, E):
         """Function describing a power-law
         """
@@ -621,16 +571,16 @@ class LEOBackgroundGenerator:
         EnergyMeV = 0.001*np.copy(np.asarray(E, dtype=float))
 
         Rcut = self.AvGeomagCutOff
-       
-        if Rcut >= self.ComputeRcut(0.3) and Rcut <= self.ComputeRcut(0.0):
+
+        if Rcut >= 10.3872 and Rcut <= 12.4706:
             Flux = self.MizunoBrokenpl(0.3, 2.2, 3000, 4.0, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(0.6) and Rcut <= self.ComputeRcut(0.3):
+        elif Rcut >= 5.7857 and Rcut <= 10.3872:
             Flux = self.MizunoPl(0.3, 2.7, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(0.8) and Rcut <= self.ComputeRcut(0.6):
+        elif Rcut >= 2.9375 and Rcut <= 5.7857:
             Flux = self.MizunoPlhump(0.3, 3.3, 2/10000, 1.5, 2.3, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(0.9) and Rcut <= self.ComputeRcut(0.8):
+        elif Rcut >= 1.8613 and Rcut <= 2.9375:
             Flux = self.MizunoPlhump(0.3, 3.5, 1.6/1000, 2.0, 1.6, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(1.0) and Rcut <= self.ComputeRcut(0.9):
+        elif Rcut >= 1.0623 and Rcut <= 1.8613:
             Flux = self.MizunoPl(0.3, 2.5, EnergyMeV)
 
         return Flux/10**7
@@ -643,20 +593,20 @@ class LEOBackgroundGenerator:
         EnergyMeV = 0.001*np.copy(np.asarray(E, dtype=float))
 
         Rcut = self.AvGeomagCutOff
-        
-        if Rcut >= self.ComputeRcut(0.3) and Rcut <= self.ComputeRcut(0.0):
+
+        if Rcut >= 10.3872 and Rcut <= 12.4706:
             Flux = self.MizunoBrokenpl(0.3, 2.2, 3000, 4.0, EnergyMeV)
             ratio = 3.3
-        elif Rcut >= self.ComputeRcut(0.6) and Rcut <= self.ComputeRcut(0.3):
+        elif Rcut >= 5.7857 and Rcut <= 10.3872:
             Flux = self.MizunoPl(0.3, 2.7, EnergyMeV)
             ratio = 1.66
-        elif Rcut >= self.ComputeRcut(0.8) and Rcut <= self.ComputeRcut(0.6):
+        elif Rcut >= 2.9375 and Rcut <= 5.7857:
             Flux = self.MizunoPlhump(0.3, 3.3, 2/10000, 1.5, 2.3, EnergyMeV)
             ratio = 1.0
-        elif Rcut >= self.ComputeRcut(0.9) and Rcut <= self.ComputeRcut(0.8):
+        elif Rcut >= 1.8613 and Rcut <= 2.9375:
             Flux = self.MizunoPlhump(0.3, 3.5, 1.6/1000, 2.0, 1.6, EnergyMeV)
             ratio = 1.0
-        elif Rcut >= self.ComputeRcut(1.0) and Rcut <= self.ComputeRcut(0.9):
+        elif Rcut >= 1.0623 and Rcut <= 1.8613:
             Flux = self.MizunoPl(0.3, 2.5, EnergyMeV)
             ratio = 1.0
 
@@ -667,7 +617,7 @@ class LEOBackgroundGenerator:
             Rigidity in GV and Flux in /m2 /sr /s /GV
             Return a flux in ph /cm2 /s /keV /sr
         """
-        filename = 'Data/AguilarProton.dat'
+        filename = './Data/AguilarProton.dat'
         data = pd.read_table(filename, sep='\s+')
 
         E0 = ((m_p * c**2).to('GeV')).value
@@ -683,27 +633,49 @@ class LEOBackgroundGenerator:
         f = self.log_interp1d(data['RigidityGV'].loc[data['Flux'] > 0.],
                               data['Flux'].loc[data['Flux'] > 0.])
 
-        
+        """ Geomagnetic modulation factor from Mizuno et al. 2004"""
+        redfac = 1/(1+(Rigidity/self.AvGeomagCutOff)**-12.0)
 
         """ Solar modulation factor from Gleeson & Axford 1968"""
         solmodfac = ((EnergyGeV+E0)**2-E0**2)/(
                     (EnergyGeV+E0+self.solmod/1000)**2-E0**2)
-                    
-        
-                    
+        return f(E)*redfac
+
+    def PrimaryProtons_HelMod(self, E):
+        """ Read Table from HelMod public online tool,
+            Rigidity in GV and Flux in /m2 /sr /s /GV
+            Return a flux in ph /cm2 /s /keV /sr
+            For data challenge 3. HARDCODED GEOCUTOFF =10 GV
+        """
+        filename = './Data/HelmodProton_Mar27_Jun27.dat'
+        data = pd.read_table(filename, sep='\s+')
+
+        E0 = ((m_p * c**2).to('GeV')).value
+
+        data["Flux"] = data["Flux"]*data['RigidityGV']
+        data['RigidityGV'] = (np.sqrt(E0**2+data['RigidityGV']**2)-E0)*10**6
+        data["Flux"] = data["Flux"]/(data['RigidityGV'])/10**4
+
+        EnergyGeV = 0.000001*np.asarray(E, dtype=float)
+
+        Rigidity = np.sqrt(EnergyGeV*EnergyGeV + 2*EnergyGeV*E0)
+
+        f = self.log_interp1d(data['RigidityGV'].loc[data['Flux'] > 0.],
+                              data['Flux'].loc[data['Flux'] > 0.])
+
         """ Geomagnetic modulation factor from Mizuno et al. 2004"""
-        redfac = 1/(1+(Rigidity/self.AvGeomagCutOff)**-12.0)            
-                    
-        return f(E+self.solmod/1000)*redfac
-            
+        redfac = 1/(1+(Rigidity/10.)**-12.0)#HARDCODED 10GV!!!
         
-            
+        return f(E)*redfac
+
+
+    
     def PrimaryAlphas(self, E):
         """ Read Table from Aguilar et al. 2015b,
             Rigidity in GV and Flux in /m2 /sr /s /GV
             Return a flux in ph /cm2 /s /keV /sr
         """
-        filename = 'Data/AguilarAlphas.dat'
+        filename = './Data/AguilarAlphas.dat'
         data = pd.read_table(filename, sep='\s+')
 
         E0 = 2*((m_p * c**2 + m_n * c**2).to('GeV')).value
@@ -720,20 +692,39 @@ class LEOBackgroundGenerator:
         f = self.log_interp1d(data['RigidityGV'].loc[data['Flux'] > 0.],
                               data['Flux'].loc[data['Flux'] > 0.])
 
-        
+        """ Geomagnetic modulation factor from Mizuno et al. 2004"""
+        redfac = 1/(1+(Rigidity/self.AvGeomagCutOff)**-12.0)
 
         """ Solar modulation factor from Gleeson & Axford 1968"""
         solmodfac = ((EnergyGeV+E0)**2-E0**2)/(
                     (EnergyGeV+E0+2*self.solmod/1000)**2-E0**2)
+        return f(E)*redfac
 
-        
-        
+    def PrimaryAlphas_HelMod(self, E):
+        """ Read Table from HelMod public online tool
+            Rigidity in GV and Flux in /m2 /sr /s /GV
+            Return a flux in ph /cm2 /s /keV /sr
+            For data challenge 3. HARDCODED GEOCUTOFF =10 GV
+
+        """
+        filename = './Data/HelmodHelium_Mar27_Jun27.dat'
+        data = pd.read_table(filename, sep='\s+')
+
+        E0 = 2*((m_p * c**2 + m_n * c**2).to('GeV')).value
+
+        data["Flux"] = data["Flux"]*data['RigidityGV']
+        data['RigidityGV'] = 4*(np.sqrt(E0**2+(data['RigidityGV']/2)**2)-E0)*10**6
+
+        data["Flux"] = data["Flux"]/(data['RigidityGV'])/10**4
+
+        EnergyGeV = 0.000001*np.asarray(E, dtype=float)
+
+        Rigidity = np.sqrt(EnergyGeV*EnergyGeV + 2*EnergyGeV*E0)/2.
+
+        f = self.log_interp1d(data['RigidityGV'].loc[data['Flux'] > 0.],
+                              data['Flux'].loc[data['Flux'] > 0.])
+
         """ Geomagnetic modulation factor from Mizuno et al. 2004"""
-        redfac = 1/(1+(Rigidity/self.AvGeomagCutOff)**-12.0)
-                
-        return f(E+2*self.solmod/1000)*redfac
-        
-        
-        
-        
-        
+        redfac = 1/(1+(Rigidity/10.)**-12.0)#HARDCODED 10GV!!!
+
+        return f(E)*redfac
