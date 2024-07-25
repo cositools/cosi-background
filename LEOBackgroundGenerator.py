@@ -701,7 +701,6 @@ class LEOBackgroundGenerator:
         """ Read Table from HelMod public online tool,
             Rigidity in GV and Flux in /m2 /sr /s /GV
             Return a flux in ph /cm2 /s /keV /sr
-            For data challenge 3. HARDCODED GEOCUTOFF =10 GV
         """
         filename = './Data/HelmodProton_Mar27_Jun27.dat'
         data = pd.read_table(filename, sep='\s+')
@@ -720,7 +719,7 @@ class LEOBackgroundGenerator:
                               data['Flux'].loc[data['Flux'] > 0.])
 
         """ Geomagnetic modulation factor from Mizuno et al. 2004"""
-        redfac = 1/(1+(Rigidity/self.AvGeomagCutOff)**-12.0)#HARDCODED 10GV!!!
+        redfac = 1/(1+(Rigidity/self.AvGeomagCutOff)**-12.0)
 
         return f(E)*redfac
 
@@ -763,8 +762,6 @@ class LEOBackgroundGenerator:
         """ Read Table from HelMod public online tool
             Rigidity in GV and Flux in /m2 /sr /s /GV
             Return a flux in ph /cm2 /s /keV /sr
-            For data challenge 3. HARDCODED GEOCUTOFF =10 GV
-
         """
         filename = './Data/HelmodHelium_Mar27_Jun27.dat'
         data = pd.read_table(filename, sep='\s+')
@@ -784,6 +781,6 @@ class LEOBackgroundGenerator:
                               data['Flux'].loc[data['Flux'] > 0.])
 
         """ Geomagnetic modulation factor from Mizuno et al. 2004"""
-        redfac = 1/(1+(Rigidity/10.)**-12.0)#HARDCODED 10GV!!!
+        redfac = 1/(1+(Rigidity/self.AvGeomagCutOff)**-12.0)
 
         return f(E)*redfac
