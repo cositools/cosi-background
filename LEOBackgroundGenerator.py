@@ -108,8 +108,9 @@ class LEOBackgroundGenerator:
         """
         EarthRadius = R_earth.to('km').value
         R_E = R_earth.to('cm').value
-        # g 01 term (in units of G) from IGRF-12 for 2020-25
-        g10 = 29405 * 10**(-9) * 10**4  # G
+        # g 01 term (in units of G) from IGRF-12 for 2020-25 : 29405
+        # g 01 term extrapolated to 2027 from fitting the precedent value : 29147.79
+        g10 = 29147.79 * 10**(-9) * 10**4  # G
 
         
         M = g10*R_E*300/10**9  # GV/cm2
