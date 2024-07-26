@@ -489,17 +489,21 @@ class LEOBackgroundGenerator:
     def SecondaryProtonsDownward(self, E):
         return self.SecondaryProtons(E)[2]
 
-    def AguilarElectronPositron(self,date=2018):
-        """ Read Table I from Aguilar et al. 2014 or Aguilar et al. 2018 or Aguilar et al. 2019,
+    def AguilarElectronPositron(self,date=2021):
+        """ Read Table I from Aguilar et al. 2014 or Aguilar et al. 2018 or Aguilar et al. 2019 or Aguilar 2021 (rescaled tom 2027)
             Return a dataframe to be used by
             PrimaryElectrons and PrimaryPositrons
         """
         filename = 'Data/AguilarElectronPositron.dat'
         filename_2018 = 'Data/AguilarElectronPositron_2018.dat'
         filename_2019 = 'Data/AguilarPositron_2019.dat' #to do
+        filename_2021 = 'Data/AMS21_Electrons_Positrons_rescaledTo27.dat'
+        
         data_2014 = pd.read_table(filename, sep='\s+')
         data_2018 = pd.read_csv(filename_2018,sep=" ",skipinitialspace=True)
         data_2019 = pd.read_csv(filename_2019,sep=" ",skipinitialspace=True)
+        data_2021 = pd.read_csv(filename_2021,sep="\s+",skipinitialspace=True)
+        
         data = pd.DataFrame({})
         
         if date == 2014 :
@@ -511,9 +515,12 @@ class LEOBackgroundGenerator:
             data["Fluxele"] = data_2018["Fluxele"]/10**10
             data['Fluxpos'] = data_2018['Fluxpos']/10**10
             data["EkeV"] = data_2018["EGeV"]*1e6 #GeV to keV
-        
-        
-        
+             
+        elif date ==2021 :
+            data["Fluxele"] = data_2021["Fluxele"]/10**10
+            data['Fluxpos'] = data_2021['Fluxpos']/10**10
+            data["EkeV"] = data_2021["EGeV"]*1e6 #GeV to keV
+
         self.PrimElecPosi = data.copy()
 
     def PrimaryElectrons(self, E):
