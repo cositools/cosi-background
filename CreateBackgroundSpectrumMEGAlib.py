@@ -59,9 +59,11 @@ pars.add_argument('-f','--components',type=str,nargs='?',default=None,help=
 		AtmosphericNeutrons\n
 		CosmicPhotons\n
 		PrimaryProtons\n
+		PrimaryProtons_HelMod\n
 		SecondaryProtonsUpward\n
 		SecondaryProtonsDownward\n
 		PrimaryAlphas\n
+		PrimaryAlphas_HelMod\n
 		PrimaryElectrons\n
 		PrimaryPositrons\n
 		SecondaryElectrons\n
@@ -108,8 +110,9 @@ if components == None :
 
     Particle = ["AtmosphericNeutrons", 
          "CosmicPhotons", 
-         "PrimaryProtons",
-         "SecondaryProtonsUpward","SecondaryProtonsDownward", "PrimaryAlphas", "PrimaryElectrons",
+	 "PrimaryProtons",
+         "PrimaryProtons_HelMod",
+         "SecondaryProtonsUpward","SecondaryProtonsDownward", "PrimaryAlphas", "PrimaryAlphas_HelMod", "PrimaryElectrons",
          "PrimaryPositrons", "SecondaryElectrons", "SecondaryPositrons",
          "AlbedoPhotons"
          ]
