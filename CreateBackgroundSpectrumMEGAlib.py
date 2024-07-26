@@ -116,7 +116,7 @@ if components == None :
          "PrimaryPositrons", "SecondaryElectrons", "SecondaryPositrons",
          "AlbedoPhotons"
          ]
-    fac = [ViewAtmo, ViewSky,ViewSky, 2*np.pi, 2*np.pi, ViewSky, ViewSky, ViewSky,4*np.pi,4*np.pi,ViewAtmo]         
+    fac = [ViewAtmo, ViewSky,ViewSky,ViewSky, 2*np.pi, 2*np.pi, ViewSky, ViewSky,ViewSky ,ViewSky,4*np.pi,4*np.pi,ViewAtmo]         
 
 else :
 
