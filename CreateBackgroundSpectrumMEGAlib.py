@@ -116,7 +116,7 @@ if components == None :
          "PrimaryPositrons", "SecondaryElectrons", "SecondaryPositrons",
          "AlbedoPhotons"
          ]
-    fac = [ViewAtmo, ViewSky,ViewSky,ViewSky, 2*np.pi, 2*np.pi, ViewSky, ViewSky,ViewSky ,ViewSky,4*np.pi,4*np.pi,ViewAtmo]         
+    fac = [ViewAtmo, ViewSky,ViewSky,ViewSky, 2*np.pi, 2*np.pi, ViewSky, ViewSky,ViewSky ,ViewSky,ViewAtmo,ViewAtmo,ViewAtmo]         
 
 else :
 
@@ -132,7 +132,7 @@ else :
             print("Error : You need to enter a geomagnetic lat (option -g) value if "+ 
                     "you want the component AtmosphericNeutrons ! ")
             sys.exit()
-        if f == "AtmosphericNeutrons" or f=="AlbedoPhotons":
+        if f == "AtmosphericNeutrons" or f=="AlbedoPhotons" or f == "SecondaryElectrons" or f == "SecondaryPositrons":
             fac.append(ViewAtmo)
             
         if f.startswith("Primary") or f == "CosmicPhotons":
@@ -141,8 +141,7 @@ else :
         if f.startswith("SecondaryProtons"):
             fac.append(2*np.pi)                             
                     
-        if f == "SecondaryElectrons" or f == "SecondaryPositrons" :
-            fac.append(4*np.pi)            
+                    
 
 
 
