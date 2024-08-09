@@ -51,7 +51,8 @@ pars.add_argument('-s', '--solarmodulation', type=float, nargs='?',
 pars.add_argument('-o', '--outputpath', type=str, nargs='?',
                   default="./", help='output path')
 
-
+pars.add_argument('-eo', '--EarthOccultation', type=bool, nargs='?',
+                  default=False, help='If the Earth occultation is set in the cosima source file. Then the solid angle for all the source become 4pi. [False]')
 
 
 pars.add_argument('-f','--components',type=str,nargs='?',default=None,help=
@@ -89,6 +90,25 @@ solarmod = args.solarmodulation
 
 components = args.components
 
+EarthOccultation = args.EarthOccultation
+
+#print the chosen parameter
+print("###############################################")
+if Geomlat is not None :
+    print(f"Geomagnetic latitude : {Geomlat}")
+
+print(f"Altitude : {Altitude} km")
+print(f"Energy range [10e{Elow},10e{Ehigh}] keV")
+if Geocutoff is not None :
+    print(f"Cutoff value : {Geocutoff} GV")
+
+print(f"Solar modulation : {solarmod} MV")
+if EarthOccultation :
+    print("Earth occultation done by cosima -> solid angle for all source is 4*Pi")
+
+print(f"Output path : {outputpath}")
+print("###############################################")
+
 
 LEOClass = LEO(1.0*Altitude, 1.0*Inclination,Geomlat,Geocutoff,solarmod)
 
@@ -116,7 +136,13 @@ if components == None :
          "PrimaryPositrons", "SecondaryElectrons", "SecondaryPositrons",
          "AlbedoPhotons"
          ]
-    fac = [ViewAtmo, ViewSky,ViewSky,ViewSky, 2*np.pi, 2*np.pi, ViewSky, ViewSky,ViewSky ,ViewSky,ViewAtmo,ViewAtmo,ViewAtmo]         
+    
+    if EarthOccultation :
+        fac = np.full(len(Particle),4*np.pi) 
+    
+    else :
+    
+        fac = [ViewAtmo, ViewSky,ViewSky,ViewSky, 2*np.pi, 2*np.pi, ViewSky, ViewSky,ViewSky ,ViewSky,ViewAtmo,ViewAtmo,ViewAtmo]         
 
 else :
 
@@ -125,21 +151,26 @@ else :
     fac =[]
     
 
-    #solid angle                    
-    for f in Particle:
+    #solid angle
+
+    if EarthOccultation :
+        fac = np.full(len(Particle),4*np.pi)
+     
+    else :               
+        for f in Particle:
     
-        if f == "AtmosphericNeutrons" and Geomlat is None :  
-            print("Error : You need to enter a geomagnetic lat (option -g) value if "+ 
-                    "you want the component AtmosphericNeutrons ! ")
-            sys.exit()
-        if f == "AtmosphericNeutrons" or f=="AlbedoPhotons" or f == "SecondaryElectrons" or f == "SecondaryPositrons":
-            fac.append(ViewAtmo)
+            if f == "AtmosphericNeutrons" and Geomlat is None :  
+                print("Error : You need to enter a geomagnetic lat (option -g) value if "+ 
+                        "you want the component AtmosphericNeutrons ! ")
+                sys.exit()
+            if f == "AtmosphericNeutrons" or f=="AlbedoPhotons" or f == "SecondaryElectrons" or f == "SecondaryPositrons":
+                fac.append(ViewAtmo)
             
-        if f.startswith("Primary") or f == "CosmicPhotons":
-            fac.append(ViewSky)
+            if f.startswith("Primary") or f == "CosmicPhotons":
+                fac.append(ViewSky)
           
-        if f.startswith("SecondaryProtons"):
-            fac.append(2*np.pi)                             
+            if f.startswith("SecondaryProtons"):
+                fac.append(2*np.pi)                             
                     
                     
 
