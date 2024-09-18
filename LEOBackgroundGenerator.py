@@ -6,7 +6,6 @@ from astropy.constants import R_earth, m_p, m_n, c
 from scipy.optimize import fsolve
 from scipy.interpolate import interp1d
 from scipy.integrate import quad
-
 import aacgmv2
 
 class LEOBackgroundGenerator:
