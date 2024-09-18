@@ -29,6 +29,9 @@ pars.add_argument('-a', '--altitude', type=float, nargs='?',
 pars.add_argument('-o', '--outputpdf', type=str, nargs='?',
                   default="FullSpectrum", help='Name of the output pdf [FullSpectrum]')
 
+pars.add_argument('-g', '--geomlat', type=float, nargs='?',
+                  default=0., help='Value of the geomagnetic latitude in rad [0]')
+                  
 pars.add_argument('-c', '--geocutoff', type=float, nargs='?',
                   default=None, help='Value of the Geocutoff [Average Geocutoff]')
 
@@ -36,7 +39,7 @@ args = pars.parse_args()
 
 Energies = np.logspace(1, 8, num=1000000, endpoint=True, base=10.0)
 
-LeoBack = LEO(args.altitude, args.inclination,args.geocutoff)
+LeoBack = LEO(args.altitude, args.inclination, args.geomlat, args.geocutoff)
 
 LeoBackfunc = [LeoBack.AtmosphericNeutrons, LeoBack.CosmicPhotons,
                LeoBack.PrimaryProtons, LeoBack.SecondaryProtonsUpward,
