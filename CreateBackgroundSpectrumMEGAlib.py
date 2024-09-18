@@ -125,7 +125,7 @@ if Geomlat is None and Geocutoff is None :
 if components == None :
 
     if Geomlat is None :
-        print("Error : You need to enter a geomagnetic lat (option -g) value if you want the component AtmosphericNeutrons ! ")
+        print("Error : You need to enter a geomagnetic lat (option -g) value if you want the component AtmosphericNeutrons and AlbedoPhotons ! ")
         sys.exit()
 
     Particle = ["AtmosphericNeutrons", 
@@ -159,9 +159,9 @@ else :
     else :               
         for f in Particle:
     
-            if f == "AtmosphericNeutrons" and Geomlat is None :  
+            if (f == "AtmosphericNeutrons" or f == "AlbedoPhotons" ) and Geomlat is None :  
                 print("Error : You need to enter a geomagnetic lat (option -g) value if "+ 
-                        "you want the component AtmosphericNeutrons ! ")
+                        "you want the component AtmosphericNeutrons and AlbedoPhotons ! ")
                 sys.exit()
             if f == "AtmosphericNeutrons" or f=="AlbedoPhotons" or f == "SecondaryElectrons" or f == "SecondaryPositrons":
                 fac.append(ViewAtmo)
