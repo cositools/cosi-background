@@ -75,7 +75,7 @@ class LEOBackgroundGenerator:
                                             ~1100 for solar maximum
         """
         if solarmodulation is None:
-            self.solmod = 650.
+            self.solmod = 500.
         else:
             self.solmod = solarmodulation
 
@@ -89,15 +89,13 @@ class LEOBackgroundGenerator:
         self.HorizonAngle = 90.0 + np.rad2deg(np.arccos(
                             (EarthRadius + AtmosphereHeight)
                             / (EarthRadius+self.Alt)))
-
-
         
         
         if GeoCutoff is None :
-            self.AvGeomagCutOff = self.ComputeRcut(self.geomlat)
+            self.AvGeomagCutOff = self.ComputeRcut(self.geomlat, self.Alt)
         
 
-    def ComputeRcut(self,geomaglat):
+    def ComputeRcut(self,geomaglat, altitude):
         """ Average Geomagnetic cutoff in GV
             for a dipole approximations
             Equation 4 Smart et al. 2005
@@ -116,7 +114,7 @@ class LEOBackgroundGenerator:
         
         M = g10*R_E*300/10**9  # GV/cm2
         
-        Rcut = (M/4*(1+self.Alt/EarthRadius)**(-2.0)
+        Rcut = (M/4*(1+altitude/EarthRadius)**(-2.0)
                              * np.cos(geomaglat)**4)
                            
         return Rcut                     
@@ -223,6 +221,17 @@ class LEOBackgroundGenerator:
         Flux[E <= 1000] = 0.109 / ((E[E <= 1000]/28)**1.4+(E[E <= 1000]/28)**2.88)
 
         return Flux
+        
+    def GruberCosmicPhotons(self, E):
+        """Equation 1 from Gruber et al. 1999
+           Return a flux in ph /cm2 /s /keV /sr
+        """
+        Flux = np.copy(np.asarray(E, dtype=float))
+        E = np.asarray(E, dtype=float)
+        Flux[E <= 60] = 7.877*(E[E <= 60]**(-1.29))*np.exp(-E[E <= 60]/41.13)
+        Flux[E > 60] = 0.0259*(E[E > 60]**(-6.5))/(60.**(-5.5)) + 0.504*(E[E > 60]**(-2.58))/(60.**(-1.58)) + 0.0288*(E[E > 60]**(-2.05))/(60.**(-1.05))
+
+        return Flux
 
     def MizunoCosmicPhotons(self, E):
         """Equation 18 from Mizuno et al. 2004
@@ -313,13 +322,15 @@ class LEOBackgroundGenerator:
         second = (2.93+(E/3.08)**4)/(1+(E/3.08)**4)
         third = (0.123+(E/91.83)**3.44)/(1+(E/91.83)**3.44)
 
-        Flux = omega*self.TuerlerCosmicPhotons(E)*first*second*third
+        Flux = self.GruberCosmicPhotons(E)*first*second*third
 
         return Flux
 
-    def SazonovAlbedoPhotons(self, E):
+    def SazonovAlbedoPhotons(self, E, geomaglat, solarmod):
         """ Equation 7 and 1 from Sazonov et al. 2007,
             hard X-ray surface brightness of the Earth’s atmosphere
+            the rigidity cut-off is computed at the Earth's surface
+            the zenith angle is integrated to compute the angle-averaged surface brightness
            Return a flux in ph /cm2 /s /keV /sr
         """
 
@@ -327,18 +338,21 @@ class LEOBackgroundGenerator:
         E = np.asarray(E, dtype=float)
 
         thetamax = 180 - self.HorizonAngle  # deg max polar angle wrt nadir
+        omega = 2*np.pi*(1-np.cos(np.deg2rad(thetamax)))
         cosomega = np.cos(np.deg2rad(thetamax))
-        Rcut = self.AvGeomagCutOff
-        phi = self.solmod / 1000  # GV
-
-        num = 1.47*0.0178/((phi/2.8)**0.4+(phi/2.8)**1.5)
-        den = np.sqrt(1+(Rcut/(1.3*(phi)**0.25*(1+2.5*phi**0.4)))**2)
-        fac = 3*cosomega*(1+cosomega)/5*np.pi
-
-        c = fac*num/den
-
+        
+        phi = solarmod / 1000  # GV
+        
+        # the rigidity cut-off used in the formula is computed at the geomagnetic latitude of the orbit position
+        # the C intensity factor is ony integrated in zenith angle
+        R_c = self.ComputeRcut(geomaglat, 40)
+        part1 = (3./(5*np.pi))*1.47*0.0178*((((phi/2.8)**0.4) + ((phi/2.8)**1.5))**(-1))
+        part2 = 1.3*(phi**0.25)*(1. + 2.5*(phi**0.4))
+        f_E = 1./(((E/44.)**(-5)) + ((E/44.)**(1.4)))
+        I_albedo = quad(lambda x: 2.*np.pi*np.cos(x)*(1. + np.cos(x))*np.sin(x), 0, np.deg2rad(thetamax))
+        C_int = part1*I_albedo[0]*(1./np.sqrt(1. + ((R_c/part2)**2.)))
         Flux[E > 2000] = 0.
-        Flux[E <= 2000] = c / ((E[E <= 2000]/44)**(-5)+(E[E <= 2000]/44)**1.4)
+        Flux[E <= 2000] = C_int*f_E/omega
 
         return Flux
 
@@ -376,40 +390,44 @@ class LEOBackgroundGenerator:
     def AlbedoPhotons(self, E):
         """ Generate an albedo photon spectrum after
         Sazonov et al. 2007 & Churazov et al. 2006
-        Tuerler et al 2010
+        Gruber et al 1999
         Mizuno et al. 2004
         Abdo et al. 2010
-        Mizuno is used as the absolute normalization
+        Sazonov is used to normalize Mizuno solar modulation dependence
+        Abdo is normalized to Mizuno (not correct?)
         Return a flux in ph /cm2 /s /keV /sr
         """
-
+        
         # Scaling from Mizuno et al. 2004
-        Rcut_desired = self.AvGeomagCutOff
+        Rcut_desired = self.ComputeRcut(self.geomlat, 40)
         Rcut_Mizuno = 4.5
         ScalerMizuno = pow(Rcut_desired/Rcut_Mizuno, -1.13)
-
-        # Scaling the other results to the Mizuno result:
-
-        MizunoValue = ScalerMizuno * self.MizunoAlbedoPhotons(1850)
-        ChurazovSazonovValue = (self.ChurazovAlbedoPhotons(1850)
-                                + self.SazonovAlbedoPhotons(1850))
-        ScalerChurazovSazonov = MizunoValue/ChurazovSazonovValue
-
-        MizunoValue = ScalerMizuno * self.MizunoAlbedoPhotons(200000)
-        AbdoValue = self.AbdoAlbedoPhotons(200000)
-        ScalerAbdo = MizunoValue/AbdoValue
-
+        
+        # Computing the scaling for Mizuno
+        # we compute the Sazonov model at Phi = 500 MV and rescale the Mizuno flux for this value.
+        # the Mizuno solar modulation is introduced as a scaling factor using the Sazonov dependence
+        # the Abdo model is not scaled
+        
+        ChurazovSazonovValueAtPhi500MV_1850keV = self.ChurazovAlbedoPhotons(1850.) + self.SazonovAlbedoPhotons(1850., self.geomlat, 500)
+        MizunoValue_1850keV = ScalerMizuno * self.MizunoAlbedoPhotons(1850.)
+        ScalerMizuno_Phi500MV = ChurazovSazonovValueAtPhi500MV_1850keV/MizunoValue_1850keV
+        ScalerPhi = self.SazonovAlbedoPhotons(1850., self.geomlat, self.solmod)/ChurazovSazonovValueAtPhi500MV_1850keV
+        
         Flux = np.copy(np.asarray(E, dtype=float))
         E = np.asarray(E, dtype=float)
-
+        
+        Flux[E < 1850.] = self.ChurazovAlbedoPhotons(E[E < 1850.]) + self.SazonovAlbedoPhotons(E[E < 1850.], self.geomlat, self.solmod)
+        
         mask = np.logical_and(E >= 1850, E < 200000.)
         maskabdo = E >= 200000.
-
-        Flux[E < 1850.] = ScalerChurazovSazonov * (
-                         self.ChurazovAlbedoPhotons(E[E < 1850.])
-                         + self.SazonovAlbedoPhotons(E[E < 1850.]))
-        Flux[mask] = ScalerMizuno * self.MizunoAlbedoPhotons(E[mask])
+        
+        Flux[mask] = ScalerPhi * ScalerMizuno_Phi500MV * ScalerMizuno * self.MizunoAlbedoPhotons(E[mask])
+        
+        MizunoValue = ScalerPhi * ScalerMizuno_Phi500MV * ScalerMizuno * self.MizunoAlbedoPhotons(200000)
+        AbdoValue = self.AbdoAlbedoPhotons(200000)
+        ScalerAbdo = MizunoValue/AbdoValue
         Flux[maskabdo] = ScalerAbdo * self.AbdoAlbedoPhotons(E[maskabdo])
+        
         return Flux
 
     def MizunoCutoffpl(self, f0, f1, a, ec, E):
@@ -446,40 +464,39 @@ class LEOBackgroundGenerator:
         """ Equation 8 from Mizuno et al. 2004,
             the geomagnetic latitude intervals
             are translated in cutoff intervals
-            considering a 400 km orbit
+            considering the spacecraft orbit
            Return a flux in ph /cm2 /s /keV /sr
         """
 
         EnergyMeV = 0.001*np.copy(np.asarray(E, dtype=float))
 
         Rcut = self.AvGeomagCutOff
-
         
-        if Rcut >= self.ComputeRcut(0.2) and Rcut <= self.ComputeRcut(0):
+        if Rcut >= self.ComputeRcut(0.2, self.Alt) and Rcut <= self.ComputeRcut(0, self.Alt):
             FluxU = self.MizunoCutoffpl(0.136, 0.123, 0.155, 0.51, EnergyMeV)
             FluxD = self.MizunoCutoffpl(0.136, 0.123, 0.155, 0.51, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(0.3) and Rcut <= self.ComputeRcut(0.2):
+        elif Rcut >= self.ComputeRcut(0.3, self.Alt) and Rcut <= self.ComputeRcut(0.2, self.Alt):
             FluxU = self.MizunoBrokenpl(0.1, 0.87, 600, 2.53, EnergyMeV)
             FluxD = self.MizunoBrokenpl(0.1, 0.87, 600, 2.53, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(0.4) and Rcut <= self.ComputeRcut(0.3):
+        elif Rcut >= self.ComputeRcut(0.4, self.Alt) and Rcut <= self.ComputeRcut(0.3, self.Alt):
             FluxU = self.MizunoBrokenpl(0.1, 1.09, 600, 2.40, EnergyMeV)
             FluxD = self.MizunoBrokenpl(0.1, 1.09, 600, 2.40, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(0.5) and Rcut <= self.ComputeRcut(0.4):
+        elif Rcut >= self.ComputeRcut(0.5, self.Alt) and Rcut <= self.ComputeRcut(0.4, self.Alt):
             FluxU = self.MizunoBrokenpl(0.1, 1.19, 600, 2.54, EnergyMeV)
             FluxD = self.MizunoBrokenpl(0.1, 1.19, 600, 2.54, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(0.6) and Rcut <= self.ComputeRcut(0.5):
+        elif Rcut >= self.ComputeRcut(0.6, self.Alt) and Rcut <= self.ComputeRcut(0.5, self.Alt):
             FluxU = self.MizunoBrokenpl(0.1, 1.18, 400, 2.31, EnergyMeV)
             FluxD = self.MizunoBrokenpl(0.1, 1.18, 400, 2.31, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(0.7) and Rcut <= self.ComputeRcut(0.6):
+        elif Rcut >= self.ComputeRcut(0.7, self.Alt) and Rcut <= self.ComputeRcut(0.6, self.Alt):
             FluxD = self.MizunoBrokenpl(0.13, 1.1, 300, 2.25, EnergyMeV)
             FluxU = self.MizunoBrokenpl(0.13, 1.1, 300, 2.95, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(0.8) and Rcut <= self.ComputeRcut(0.7):
+        elif Rcut >= self.ComputeRcut(0.8, self.Alt) and Rcut <= self.ComputeRcut(0.7, self.Alt):
             FluxD = self.MizunoBrokenpl(0.2, 1.5, 400, 1.85, EnergyMeV)
             FluxU = self.MizunoBrokenpl(0.2, 1.5, 400, 4.16, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(0.9) and Rcut <= self.ComputeRcut(0.8):
+        elif Rcut >= self.ComputeRcut(0.9, self.Alt) and Rcut <= self.ComputeRcut(0.8, self.Alt):
             FluxD = self.MizunoCutoffpl(0.23, 0.017, 1.83, 0.177, EnergyMeV)
             FluxU = self.MizunoBrokenpl(0.23, 1.53, 400, 4.68, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(1.0) and Rcut <= self.ComputeRcut(0.9):
+        elif Rcut >= self.ComputeRcut(1.0, self.Alt) and Rcut <= self.ComputeRcut(0.9, self.Alt):
             FluxD = self.MizunoCutoffpl(0.44, 0.037, 1.98, 0.21, EnergyMeV)
             FluxU = self.MizunoBrokenpl(0.44, 2.25, 400, 3.09, EnergyMeV)
 
@@ -631,15 +648,15 @@ class LEOBackgroundGenerator:
 
         Rcut = self.AvGeomagCutOff
        
-        if Rcut >= self.ComputeRcut(0.3) and Rcut <= self.ComputeRcut(0.0):
+        if Rcut >= self.ComputeRcut(0.3, self.Alt) and Rcut <= self.ComputeRcut(0.0, self.Alt):
             Flux = self.MizunoBrokenpl(0.3, 2.2, 3000, 4.0, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(0.6) and Rcut <= self.ComputeRcut(0.3):
+        elif Rcut >= self.ComputeRcut(0.6, self.Alt) and Rcut <= self.ComputeRcut(0.3, self.Alt):
             Flux = self.MizunoPl(0.3, 2.7, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(0.8) and Rcut <= self.ComputeRcut(0.6):
+        elif Rcut >= self.ComputeRcut(0.8, self.Alt) and Rcut <= self.ComputeRcut(0.6, self.Alt):
             Flux = self.MizunoPlhump(0.3, 3.3, 2/10000, 1.5, 2.3, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(0.9) and Rcut <= self.ComputeRcut(0.8):
+        elif Rcut >= self.ComputeRcut(0.9, self.Alt) and Rcut <= self.ComputeRcut(0.8, self.Alt):
             Flux = self.MizunoPlhump(0.3, 3.5, 1.6/1000, 2.0, 1.6, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(1.0) and Rcut <= self.ComputeRcut(0.9):
+        elif Rcut >= self.ComputeRcut(1.0, self.Alt) and Rcut <= self.ComputeRcut(0.9, self.Alt):
             Flux = self.MizunoPl(0.3, 2.5, EnergyMeV)
 
         return Flux/10**7
@@ -653,19 +670,19 @@ class LEOBackgroundGenerator:
 
         Rcut = self.AvGeomagCutOff
         
-        if Rcut >= self.ComputeRcut(0.3) and Rcut <= self.ComputeRcut(0.0):
+        if Rcut >= self.ComputeRcut(0.3, self.Alt) and Rcut <= self.ComputeRcut(0.0, self.Alt):
             Flux = self.MizunoBrokenpl(0.3, 2.2, 3000, 4.0, EnergyMeV)
             ratio = 3.3
-        elif Rcut >= self.ComputeRcut(0.6) and Rcut <= self.ComputeRcut(0.3):
+        elif Rcut >= self.ComputeRcut(0.6, self.Alt) and Rcut <= self.ComputeRcut(0.3, self.Alt):
             Flux = self.MizunoPl(0.3, 2.7, EnergyMeV)
             ratio = 1.66
-        elif Rcut >= self.ComputeRcut(0.8) and Rcut <= self.ComputeRcut(0.6):
+        elif Rcut >= self.ComputeRcut(0.8, self.Alt) and Rcut <= self.ComputeRcut(0.6, self.Alt):
             Flux = self.MizunoPlhump(0.3, 3.3, 2/10000, 1.5, 2.3, EnergyMeV)
             ratio = 1.0
-        elif Rcut >= self.ComputeRcut(0.9) and Rcut <= self.ComputeRcut(0.8):
+        elif Rcut >= self.ComputeRcut(0.9, self.Alt) and Rcut <= self.ComputeRcut(0.8, self.Alt):
             Flux = self.MizunoPlhump(0.3, 3.5, 1.6/1000, 2.0, 1.6, EnergyMeV)
             ratio = 1.0
-        elif Rcut >= self.ComputeRcut(1.0) and Rcut <= self.ComputeRcut(0.9):
+        elif Rcut >= self.ComputeRcut(1.0, self.Alt) and Rcut <= self.ComputeRcut(0.9, self.Alt):
             Flux = self.MizunoPl(0.3, 2.5, EnergyMeV)
             ratio = 1.0
 
