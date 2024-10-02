@@ -496,7 +496,7 @@ class LEOBackgroundGenerator:
         elif Rcut >= self.ComputeRcut(0.9, self.Alt) and Rcut <= self.ComputeRcut(0.8, self.Alt):
             FluxD = self.MizunoCutoffpl(0.23, 0.017, 1.83, 0.177, EnergyMeV)
             FluxU = self.MizunoBrokenpl(0.23, 1.53, 400, 4.68, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(1.0, self.Alt) and Rcut <= self.ComputeRcut(0.9, self.Alt):
+        elif Rcut <= self.ComputeRcut(0.9, self.Alt):
             FluxD = self.MizunoCutoffpl(0.44, 0.037, 1.98, 0.21, EnergyMeV)
             FluxU = self.MizunoBrokenpl(0.44, 2.25, 400, 3.09, EnergyMeV)
 
@@ -656,7 +656,7 @@ class LEOBackgroundGenerator:
             Flux = self.MizunoPlhump(0.3, 3.3, 2/10000, 1.5, 2.3, EnergyMeV)
         elif Rcut >= self.ComputeRcut(0.9, self.Alt) and Rcut <= self.ComputeRcut(0.8, self.Alt):
             Flux = self.MizunoPlhump(0.3, 3.5, 1.6/1000, 2.0, 1.6, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(1.0, self.Alt) and Rcut <= self.ComputeRcut(0.9, self.Alt):
+        elif Rcut <= self.ComputeRcut(0.9, self.Alt):
             Flux = self.MizunoPl(0.3, 2.5, EnergyMeV)
 
         return Flux/10**7
@@ -682,7 +682,7 @@ class LEOBackgroundGenerator:
         elif Rcut >= self.ComputeRcut(0.9, self.Alt) and Rcut <= self.ComputeRcut(0.8, self.Alt):
             Flux = self.MizunoPlhump(0.3, 3.5, 1.6/1000, 2.0, 1.6, EnergyMeV)
             ratio = 1.0
-        elif Rcut >= self.ComputeRcut(1.0, self.Alt) and Rcut <= self.ComputeRcut(0.9, self.Alt):
+        elif Rcut <= self.ComputeRcut(0.9, self.Alt):
             Flux = self.MizunoPl(0.3, 2.5, EnergyMeV)
             ratio = 1.0
 
