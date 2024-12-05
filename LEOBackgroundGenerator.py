@@ -694,60 +694,71 @@ class LEOBackgroundGenerator:
             Return a flux in ph /cm2 /s /keV /sr
         """
         filename = 'Data/AguilarProton.dat'
+        Z = 1.
+        A = 1.
         data = pd.read_table(filename, sep='\s+')
-
-        E0 = ((m_p * c**2).to('GeV')).value
-
-        data["Flux"] = data["Flux"]*data['RigidityGV']
-        data['RigidityGV'] = (np.sqrt(E0**2+data['RigidityGV']**2)-E0)*10**6
-        data["Flux"] = data["Flux"]/(data['RigidityGV'])/10**4
-
-        EnergyGeV = 0.000001*np.asarray(E, dtype=float)
-
-        Rigidity = np.sqrt(EnergyGeV*EnergyGeV + 2*EnergyGeV*E0)
-
-        f = self.log_interp1d(data['RigidityGV'].loc[data['Flux'] > 0.],
-                              data['Flux'].loc[data['Flux'] > 0.])
-
+        E0 = A * ((m_p * c**2).to('GeV')).value
         
+        #To convert flux from part / (m2 sr s GV) to part /  (cm2 sr s GeV)
+        FluxArray = data["Flux"].to_numpy()
+        RigidityArray =  data['RigidityGV'].to_numpy()
+        KyneticEnergy = np.sqrt( np.power(E0,2) + np.power(RigidityArray * Z,2) ) - E0 #in GeV
+        Flux_Ek = FluxArray * (KyneticEnergy + E0 ) / ( RigidityArray * np.power(Z,2) ) # flux in part / ( m^2 sr s GeV )        
 
-        """ Solar modulation factor from Gleeson & Axford 1968"""
-        solmodfac = ((EnergyGeV+E0)**2-E0**2)/(
-                    (EnergyGeV+E0+self.solmod/1000)**2-E0**2)
+        # binning in Ek (input)
+        EnergyGeV = 0.000001*np.asarray(E, dtype=float)#keV to GeV
+        Rigidity = np.sqrt(EnergyGeV*EnergyGeV + 2*EnergyGeV*E0)/Z# in GV
+
+        #interpolation of spectrum to input bin
+        f = self.log_interp1d(KyneticEnergy[Flux_Ek>0], Flux_Ek[Flux_Ek>0] )# in part / ( m^2 sr s GeV )
+
+        """ Solar modulation factor from Gleeson & Axford 1968. Being this a spectrum measured at 1 AU it already includes the solar modulation (for a specific epoch). No need to include this factor """
+        #solmodfac = ((EnergyGeV+E0)**2-E0**2)/(
+        #            (EnergyGeV+E0+self.solmod/1000)**2-E0**2)
                     
-        
         """ Geomagnetic modulation factor from Mizuno et al. 2004"""
         redfac = 1/(1+(Rigidity/self.AvGeomagCutOff)**-12.0)            
 
-        return f(E)*redfac
-            
+        #Convert to part / ( cm^2 sr s keV )
+        #Include solar modulation
+        return f(EnergyGeV)/1e6/1e4 * redfac
         
-            
+
+
     def PrimaryProtons_HelMod(self, E):
         """ Read Table from HelMod public online tool,
             Rigidity in GV and Flux in /m2 /sr /s /GV
             Return a flux in ph /cm2 /s /keV /sr
         """
         filename = './Data/HelmodProton_Mar27_Jun27.dat'
+        Z = 1.
+        A = 1.
         data = pd.read_table(filename, sep='\s+')
+        E0 = A * ((m_p * c**2).to('GeV')).value
         
-        E0 = ((m_p * c**2).to('GeV')).value
+        #To convert flux from part / (m2 sr s GV) to part /  (cm2 sr s GeV)
+        FluxArray = data["Flux"].to_numpy()
+        RigidityArray =  data['RigidityGV'].to_numpy()
+        KyneticEnergy = np.sqrt( np.power(E0,2) + np.power(RigidityArray * Z,2) ) - E0 #in GeV
+        Flux_Ek = FluxArray * (KyneticEnergy + E0 ) / ( RigidityArray * np.power(Z,2) ) # flux in part / ( m^2 sr s GeV )        
 
-        data["Flux"] = data["Flux"]*data['RigidityGV']
-        data['RigidityGV'] = (np.sqrt(E0**2+data['RigidityGV']**2)-E0)*10**6
-        data["Flux"] = data["Flux"]/(data['RigidityGV'])/10**4
+        # binning in Ek (input)
+        EnergyGeV = 0.000001*np.asarray(E, dtype=float)#keV to GeV
+        Rigidity = np.sqrt(EnergyGeV*EnergyGeV + 2*EnergyGeV*E0)/Z# in GV
 
-        EnergyGeV = 0.000001*np.asarray(E, dtype=float)
+        #interpolation of spectrum to input bin
+        f = self.log_interp1d(KyneticEnergy[Flux_Ek>0], Flux_Ek[Flux_Ek>0] )# in part / ( m^2 sr s GeV )
 
-        Rigidity = np.sqrt(EnergyGeV*EnergyGeV + 2*EnergyGeV*E0)
-
-        f = self.log_interp1d(data['RigidityGV'].loc[data['Flux'] > 0.],
-                              data['Flux'].loc[data['Flux'] > 0.])
-
+        """ Solar modulation factor from Gleeson & Axford 1968. By definition the input table already includes the solar modulation """
+        #solmodfac = ((EnergyGeV+E0)**2-E0**2)/(
+        #            (EnergyGeV+E0+self.solmod/1000)**2-E0**2)
+                    
         """ Geomagnetic modulation factor from Mizuno et al. 2004"""
-        redfac = 1/(1+(Rigidity/self.AvGeomagCutOff)**-12.0)
+        redfac = 1/(1+(Rigidity/self.AvGeomagCutOff)**-12.0)            
 
-        return f(E)*redfac
+        #Convert to part / ( cm^2 sr s keV )
+        #Include solar modulation
+        return f(EnergyGeV)/1e6/1e4 * redfac
 
 
     def PrimaryAlphas(self, E):
@@ -756,57 +767,105 @@ class LEOBackgroundGenerator:
             Return a flux in ph /cm2 /s /keV /sr
         """
         filename = 'Data/AguilarAlphas.dat'
+        Z = 2.
+        A = 4.
         data = pd.read_table(filename, sep='\s+')
-
-        E0 = 2*((m_p * c**2 + m_n * c**2).to('GeV')).value
-
-        data["Flux"] = data["Flux"]*data['RigidityGV']
-        data['RigidityGV'] = 4*(np.sqrt(E0**2+(data['RigidityGV']/2)**2)-E0)*10**6
-
-        data["Flux"] = data["Flux"]/(data['RigidityGV'])/10**4
-
-        EnergyGeV = 0.000001*np.asarray(E, dtype=float)
-
-        Rigidity = np.sqrt(EnergyGeV*EnergyGeV + 2*EnergyGeV*E0)/2.
-
-        f = self.log_interp1d(data['RigidityGV'].loc[data['Flux'] > 0.],
-                              data['Flux'].loc[data['Flux'] > 0.])
-
+        E0 = A * ((m_p * c**2).to('GeV')).value
         
+        #To convert flux from part / (m2 sr s GV) to part /  (cm2 sr s GeV)
+        FluxArray = data["Flux"].to_numpy()
+        RigidityArray =  data['RigidityGV'].to_numpy()
+        KyneticEnergy = np.sqrt( np.power(E0,2) + np.power(RigidityArray * Z,2) ) - E0 #in GeV
+        Flux_Ek = FluxArray * (KyneticEnergy + E0 ) / ( RigidityArray * np.power(Z,2) ) # flux in part / ( m^2 sr s GeV )        
 
-        """ Solar modulation factor from Gleeson & Axford 1968"""
-        solmodfac = ((EnergyGeV+E0)**2-E0**2)/(
-                    (EnergyGeV+E0+2*self.solmod/1000)**2-E0**2)
-                
+        # binning in Ek (input)
+        EnergyGeV = 0.000001*np.asarray(E, dtype=float)#keV to GeV
+        Rigidity = np.sqrt(EnergyGeV*EnergyGeV + 2*EnergyGeV*E0)/Z# in GV
+
+        #interpolation of spectrum to input bin
+        f = self.log_interp1d(KyneticEnergy[Flux_Ek>0], Flux_Ek[Flux_Ek>0] )# in part / ( m^2 sr s GeV )
+
+        """ Solar modulation factor from Gleeson & Axford 1968. Being this a spectrum measured at 1 AU it already includes the solar modulation (for a specific epoch). No need to include this factor """
+        #solmodfac = ((EnergyGeV+E0)**2-E0**2)/(
+        #            (EnergyGeV+E0+self.solmod/1000)**2-E0**2)
+                    
         """ Geomagnetic modulation factor from Mizuno et al. 2004"""
-        redfac = 1/(1+(Rigidity/self.AvGeomagCutOff)**-12.0)
-                
-        return f(E)*redfac
+        redfac = 1/(1+(Rigidity/self.AvGeomagCutOff)**-12.0)            
 
-        
+        #Convert to part / ( cm^2 sr s keV )
+        #Include solar modulation
+        return f(EnergyGeV)/1e6/1e4 * redfac
+
+
     def PrimaryAlphas_HelMod(self, E):
         """ Read Table from HelMod public online tool
             Rigidity in GV and Flux in /m2 /sr /s /GV
             Return a flux in ph /cm2 /s /keV /sr
         """
-        filename = './Data/HelmodHelium_Mar27_Jun27.dat'
+        filename = 'Data/HelmodHelium_Mar27_Jun27.dat'
+        Z = 2.
+        A = 4.
         data = pd.read_table(filename, sep='\s+')
+        E0 = A * ((m_p * c**2).to('GeV')).value
+        
+        #To convert flux from part / (m2 sr s GV) to part /  (cm2 sr s GeV)
+        FluxArray = data["Flux"].to_numpy()
+        RigidityArray =  data['RigidityGV'].to_numpy()
+        KyneticEnergy = np.sqrt( np.power(E0,2) + np.power(RigidityArray * Z,2) ) - E0 #in GeV
+        Flux_Ek = FluxArray * (KyneticEnergy + E0 ) / ( RigidityArray * np.power(Z,2) ) # flux in part / ( m^2 sr s GeV )        
 
-        E0 = 2*((m_p * c**2 + m_n * c**2).to('GeV')).value
+        # binning in Ek (input)
+        EnergyGeV = 0.000001*np.asarray(E, dtype=float)#keV to GeV
+        Rigidity = np.sqrt(EnergyGeV*EnergyGeV + 2*EnergyGeV*E0)/Z# in GV
 
-        data["Flux"] = data["Flux"]*data['RigidityGV']
-        data['RigidityGV'] = 4*(np.sqrt(E0**2+(data['RigidityGV']/2)**2)-E0)*10**6
+        #interpolation of spectrum to input bin
+        f = self.log_interp1d(KyneticEnergy[Flux_Ek>0], Flux_Ek[Flux_Ek>0] )# in part / ( m^2 sr s GeV )
 
-        data["Flux"] = data["Flux"]/(data['RigidityGV'])/10**4
-
-        EnergyGeV = 0.000001*np.asarray(E, dtype=float)
-
-        Rigidity = np.sqrt(EnergyGeV*EnergyGeV + 2*EnergyGeV*E0)/2.
-
-        f = self.log_interp1d(data['RigidityGV'].loc[data['Flux'] > 0.],
-                              data['Flux'].loc[data['Flux'] > 0.])
-
+        """ Solar modulation factor from Gleeson & Axford 1968. By definition the input table already includes the solar modulation.  No need to include this factor """
+        #solmodfac = ((EnergyGeV+E0)**2-E0**2)/(
+        #            (EnergyGeV+E0+self.solmod/1000)**2-E0**2)
+                    
         """ Geomagnetic modulation factor from Mizuno et al. 2004"""
-        redfac = 1/(1+(Rigidity/self.AvGeomagCutOff)**-12.0)
+        redfac = 1/(1+(Rigidity/self.AvGeomagCutOff)**-12.0)            
 
-        return f(E)*redfac
+        #Convert to part / ( cm^2 sr s keV )
+        #Include solar modulation
+        return f(EnergyGeV)/1e6/1e4 * redfac
+
+
+    
+    def PrimaryOxygen_HelMod(self, E):
+        """ Read Table from HelMod public online tool
+            Rigidity in GV and Flux in /m2 /sr /s /GV
+            Return a flux in ph /cm2 /s /keV /sr
+        """
+        filename = 'Data/HelmodOxygen_Mar27_Jun27.dat'
+        Z = 8.
+        A = 16.
+        data = pd.read_table(filename, sep='\s+')
+        E0 = A * ((m_p * c**2).to('GeV')).value
+        
+        #To convert flux from part / (m2 sr s GV) to part /  (cm2 sr s GeV)
+        FluxArray = data["Flux"].to_numpy()
+        RigidityArray =  data['RigidityGV'].to_numpy()
+        KyneticEnergy = np.sqrt( np.power(E0,2) + np.power(RigidityArray * Z,2) ) - E0 #in GeV
+        Flux_Ek = FluxArray * (KyneticEnergy + E0 ) / ( RigidityArray * np.power(Z,2) ) # flux in part / ( m^2 sr s GeV )        
+
+        # binning in Ek (input)
+        EnergyGeV = 0.000001*np.asarray(E, dtype=float) #keV to GeV
+        Rigidity = np.sqrt(EnergyGeV*EnergyGeV + 2*EnergyGeV*E0)/Z# in GV
+
+        #interpolation of spectrum to input bin
+        f = self.log_interp1d(KyneticEnergy[Flux_Ek>0], Flux_Ek[Flux_Ek>0] )# in part / ( m^2 sr s GeV )
+
+        """ Solar modulation factor from Gleeson & Axford 1968. By definition the input table already includes the solar modulation.  No need to include this factor """
+        #solmodfac = ((EnergyGeV+E0)**2-E0**2)/(
+        #            (EnergyGeV+E0+self.solmod/1000)**2-E0**2)
+                    
+        """ Geomagnetic modulation factor from Mizuno et al. 2004"""
+        redfac = 1/(1+(Rigidity/self.AvGeomagCutOff)**-12.0)            
+
+        #Convert to part / ( cm^2 sr s keV )
+        #Include solar modulation
+        return f(EnergyGeV)/1e6/1e4 * redfac
+        
