@@ -143,7 +143,7 @@ if components == None :
     
     else :
     
-        fac = [ViewAtmo, ViewSky,ViewSky,ViewSky, 2*np.pi, 2*np.pi, ViewSky, ViewSky,ViewSky ,ViewSky,ViewAtmo,ViewAtmo,ViewAtmo]         
+        fac = [ViewAtmo, ViewSky,ViewSky,ViewSky, 2*np.pi, 2*np.pi, ViewSky, ViewSky,ViewSky,ViewSky ,ViewSky,ViewAtmo,ViewAtmo,ViewAtmo]         
 
 else :
 
