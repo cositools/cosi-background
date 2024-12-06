@@ -65,6 +65,7 @@ pars.add_argument('-f','--components',type=str,nargs='?',default=None,help=
 		SecondaryProtonsDownward\n
 		PrimaryAlphas\n
 		PrimaryAlphas_HelMod\n
+                PrimaryOxygen_HelMod\n
 		PrimaryElectrons\n
 		PrimaryPositrons\n
 		SecondaryElectrons\n
@@ -132,7 +133,7 @@ if components == None :
          "CosmicPhotons", 
 	 "PrimaryProtons",
          "PrimaryProtons_HelMod",
-         "SecondaryProtonsUpward","SecondaryProtonsDownward", "PrimaryAlphas", "PrimaryAlphas_HelMod", "PrimaryElectrons",
+         "SecondaryProtonsUpward","SecondaryProtonsDownward", "PrimaryAlphas", "PrimaryAlphas_HelMod", "PrimaryOxygen_HelMod" , "PrimaryElectrons",
          "PrimaryPositrons", "SecondaryElectrons", "SecondaryPositrons",
          "AlbedoPhotons"
          ]
