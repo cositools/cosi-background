@@ -60,22 +60,32 @@ pars.add_argument('-f','--components',type=str,nargs='?',default=None,help=
 		AtmosphericNeutrons\n
 		CosmicPhotons\n
 		PrimaryProtons\n
-		PrimaryProtons_HelMod\n
 		SecondaryProtonsUpward\n
 		SecondaryProtonsDownward\n
 		PrimaryAlphas\n
-		PrimaryAlphas_HelMod\n
-                PrimaryOxygen_HelMod\n
 		PrimaryElectrons\n
 		PrimaryPositrons\n
 		SecondaryElectrons\n
 		SecondaryPositrons\n
 		AlbedoPhotons\n
-		
+		HadronSpectra\n
 		default : all components''')
 
 
+pars.add_argument('-hs', '--HadronSpectrum', type=str, nargs='?',
+                  default=".", help='Input spectrum file. To use in combination with HadronSpectra function.')
+
+pars.add_argument('-Z', '--AtomicNumber', type=int, nargs='?',
+                  default=-1, help='Atomic number. To use in combination with HadronSpectra function.')
+
+pars.add_argument('-A', '--AtomicMass', type=float, nargs='?',
+                  default=-1, help='Atomic Mass. To use in combination with HadronSpectra function.')
+
+    
 args = pars.parse_args()
+if args.components == "HadronSpectra" and (args.HadronSpectrum=="." or args.AtomicNumber==-1 or args.AtomicMass==-1):
+    print("Error: set HadronSpectra with a valid input file name (-hs), A (-A) and Z (-Z)")
+    sys.exit()
 
 Geomlat = args.geomlat
 Inclination = args.inclination
@@ -92,6 +102,12 @@ solarmod = args.solarmodulation
 components = args.components
 
 EarthOccultation = args.EarthOccultation
+
+AtomicNumber = args.AtomicNumber
+
+AtomicMass = args.AtomicMass
+
+hadronSpectrumName = args.HadronSpectrum
 
 #print the chosen parameter
 print("###############################################")
@@ -111,7 +127,7 @@ print(f"Output path : {outputpath}")
 print("###############################################")
 
 
-LEOClass = LEO(1.0*Altitude, 1.0*Inclination,Geomlat,Geocutoff,solarmod)
+LEOClass = LEO(1.0*Altitude, 1.0*Inclination,Geomlat,Geocutoff,solarmod,hadronSpectrumName,AtomicNumber,AtomicMass)
 
 ViewAtmo = 2*np.pi * (np.cos(np.deg2rad(LEOClass.HorizonAngle)) + 1)
 ViewSky = 2*np.pi * (1-np.cos(np.deg2rad(LEOClass.HorizonAngle)))
@@ -132,10 +148,9 @@ if components == None :
     Particle = ["AtmosphericNeutrons", 
          "CosmicPhotons", 
 	 "PrimaryProtons",
-         "PrimaryProtons_HelMod",
-         "SecondaryProtonsUpward","SecondaryProtonsDownward", "PrimaryAlphas", "PrimaryAlphas_HelMod", "PrimaryOxygen_HelMod" , "PrimaryElectrons",
+         "SecondaryProtonsUpward","SecondaryProtonsDownward", "PrimaryAlphas", "PrimaryElectrons",
          "PrimaryPositrons", "SecondaryElectrons", "SecondaryPositrons",
-         "AlbedoPhotons"
+         "AlbedoPhotons","HadronSpectra"
          ]
     
     if EarthOccultation :
@@ -143,7 +158,7 @@ if components == None :
     
     else :
     
-        fac = [ViewAtmo, ViewSky,ViewSky,ViewSky, 2*np.pi, 2*np.pi, ViewSky, ViewSky,ViewSky ,ViewSky,ViewAtmo,ViewAtmo,ViewAtmo]         
+        fac = [ViewAtmo, ViewSky,ViewSky,2*np.pi, 2*np.pi, ViewSky, ViewSky,ViewSky ,ViewAtmo,ViewAtmo,ViewAtmo,ViewSky]         
 
 else :
 
@@ -167,35 +182,36 @@ else :
             if f == "AtmosphericNeutrons" or f=="AlbedoPhotons" or f == "SecondaryElectrons" or f == "SecondaryPositrons":
                 fac.append(ViewAtmo)
             
-            if f.startswith("Primary") or f == "CosmicPhotons":
+            if f.startswith("Primary") or f == "CosmicPhotons" or f.startswith("Hadron"):
                 fac.append(ViewSky)
           
             if f.startswith("SecondaryProtons"):
                 fac.append(2*np.pi)                             
                     
-                    
-
-
-
-
-
 
 for i in range(0, len(Particle)):
 
     Energies = np.logspace(Elow, Ehigh, num=100, endpoint=True, base=10.0)
     if Geocutoff==None :
-        Output = "%s/%s_Spec_%skm_%sdeg_%ssolarmod.dat" % (outputpath,Particle[i], float(Altitude), float(Inclination),float(solarmod))
+        Output = "%s/%s_Spec_%skm_%sdeg_%ssolarmod" % (outputpath,Particle[i], float(Altitude), float(Inclination),float(solarmod))
     else :
-        Output = "{0}/{1}_Spec_{2}km_{3}deg_{4:.3f}cutoff_{5}solarmod.dat".format(outputpath,Particle[i], float(Altitude), float(Inclination),float(Geocutoff),float(solarmod))
-    #print(Megalibfunc[i](Energies))
+        Output = "{0}/{1}_Spec_{2}km_{3}deg_{4:.3f}cutoff_{5}solarmod".format(outputpath,Particle[i], float(Altitude), float(Inclination),float(Geocutoff),float(solarmod))
+
+    if Particle[i]=='HadronSpectra':
+        HadronString="Z{0}_A{1}".format(AtomicNumber,AtomicMass)
+        Output = Output + HadronString
+
+    Output = Output + ".dat"
+        
     IntSpectrum = np.trapz(getattr(LEOClass, Particle[i])(Energies),Energies)
     print(Particle[i], IntSpectrum*fac[i], " #/cm^2/s")
     with open(Output, 'w') as f:
         print('# %s spectrum ' % Particle[i], file=f)
+        if Particle[i]=='HadronSpectra':
+            print('# For hadron spectra: Z= %d, A= %f' % (AtomicNumber,AtomicMass), file=f)
         print('# Format: DP <energy in keV> <shape of differential spectrum [XX/keV]>', file=f)
         print('# Although cosima doesn\'t use it the spectrum here is given as a flux in #/cm^2/s/keV', file=f)
         print('# Integrated over %s sr' % fac[i], file=f)
-        #print('# Flux: %s #/cm^2/s/str' % (IntSpectrum), file=f)
         print('# Integral Flux: %s #/cm^2/s' % (IntSpectrum*fac[i]), file=f)
         print('', file=f)
         print('IP LOGLOG', file=f)
