@@ -221,7 +221,7 @@ for i in range(0, len(Particle)):
         print('# Integrated over %s sr' % fac[i], file=f)
         print('# Integral Flux: %s #/cm^2/s' % (IntSpectrum*fac[i]), file=f)
         print('', file=f)
-	if Energyrange == "log" :    
+        if Energyrange == "log" :    
             print('IP LOGLOG', file=f)
         elif Energyrange == "lin":
             print('IP LINLOG', file=f)	
