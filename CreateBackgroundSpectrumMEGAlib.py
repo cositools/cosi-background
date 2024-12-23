@@ -32,21 +32,20 @@ pars.add_argument('-i', '--inclination', type=float, nargs='?',
 pars.add_argument('-a', '--altitude', type=float, nargs='?',
                   default=550., help='Altitude of the orbit in km [550.]')
 
+pars.add_argument('-es', '--energyscale', type=str, nargs='?',
+                  default="log", help='Energy range in lin or log space [log]')
+
 pars.add_argument('-el', '--elow', type=float, nargs='?',
-                  default=2, help='Log10 of the lowest energy limit in keV [2]')
-                
-                                    
+                  default=2, help='Log10 of the lowest energy limit in keV [2]')                                    
 
 pars.add_argument('-eh', '--ehigh', type=float, nargs='?',
                   default=10, help='Log10 of the highest energy limit in keV [10]')
-
 
 pars.add_argument('-c', '--cutoff', type=float, nargs='?',
                   default=None, help='Value of the geocutoff [compute with geomlat]')
                   
 pars.add_argument('-s', '--solarmodulation', type=float, nargs='?',
                   default=650., help='solar modulation (550 min and 1100 max) [650]')
-
 
 pars.add_argument('-o', '--outputpath', type=str, nargs='?',
                   default="./", help='output path')
@@ -109,13 +108,15 @@ AtomicMass = args.AtomicMass
 
 hadronSpectrumName = args.HadronSpectrum
 
+Energyrange = args.energyscale
+
 #print the chosen parameter
 print("###############################################")
 if Geomlat is not None :
     print(f"Geomagnetic latitude : {Geomlat}")
 
 print(f"Altitude : {Altitude} km")
-print(f"Energy range [10e{Elow},10e{Ehigh}] keV")
+print(f"Energy range [10e{Elow},10e{Ehigh}] keV with {Energyrange} space")
 if Geocutoff is not None :
     print(f"Cutoff value : {Geocutoff} GV")
 
@@ -193,7 +194,11 @@ else :
 
 for i in range(0, len(Particle)):
 
-    Energies = np.logspace(Elow, Ehigh, num=100, endpoint=True, base=10.0)
+    if Energyrange == "log" :	
+        Energies = np.logspace(Elow, Ehigh, num=100, endpoint=True, base=10.0)
+    elif Energyrange == "lin":
+	Energies = np.linspace(np.power(10,Elow), np.power(10,Ehigh), 1000 )    
+	
     if Geocutoff==None :
         Output = "%s/%s_Spec_%skm_%sdeg_%ssolarmod" % (outputpath,Particle[i], float(Altitude), float(Inclination),float(solarmod))
     else :
@@ -216,7 +221,10 @@ for i in range(0, len(Particle)):
         print('# Integrated over %s sr' % fac[i], file=f)
         print('# Integral Flux: %s #/cm^2/s' % (IntSpectrum*fac[i]), file=f)
         print('', file=f)
-        print('IP LOGLOG', file=f)
+	if Energyrange == "log" :    
+            print('IP LOGLOG', file=f)
+	elif Energyrange == "lin":
+	    print('IP LINLOG', file=f)	
         print('', file=f)
         for j in range(0, len(Energies)):
             print('DP', Energies[j], getattr(LEOClass, Particle[i])(Energies[j]), file=f)
