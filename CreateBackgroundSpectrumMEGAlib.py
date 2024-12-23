@@ -197,7 +197,7 @@ for i in range(0, len(Particle)):
     if Energyrange == "log" :	
         Energies = np.logspace(Elow, Ehigh, num=100, endpoint=True, base=10.0)
     elif Energyrange == "lin":
-	Energies = np.linspace(np.power(10,Elow), np.power(10,Ehigh), 1000 )    
+        Energies = np.linspace(np.power(10,Elow), np.power(10,Ehigh), 1000 )    
 	
     if Geocutoff==None :
         Output = "%s/%s_Spec_%skm_%sdeg_%ssolarmod" % (outputpath,Particle[i], float(Altitude), float(Inclination),float(solarmod))
@@ -223,8 +223,8 @@ for i in range(0, len(Particle)):
         print('', file=f)
 	if Energyrange == "log" :    
             print('IP LOGLOG', file=f)
-	elif Energyrange == "lin":
-	    print('IP LINLOG', file=f)	
+        elif Energyrange == "lin":
+            print('IP LINLOG', file=f)	
         print('', file=f)
         for j in range(0, len(Energies)):
             print('DP', Energies[j], getattr(LEOClass, Particle[i])(Energies[j]), file=f)
