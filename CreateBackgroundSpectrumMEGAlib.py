@@ -160,6 +160,8 @@ if components == None :
     
         fac = [ViewAtmo, ViewSky,ViewSky,2*np.pi, 2*np.pi, ViewSky, ViewSky,ViewSky ,ViewAtmo,ViewAtmo,ViewAtmo,ViewSky]         
 
+        
+
 else :
 
 
