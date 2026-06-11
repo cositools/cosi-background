@@ -15,14 +15,14 @@ Please use this reference if you present any result obtain using these classes.
 * [Validity limits](#limits)
 
 <h2>Packages</h2>
-The macros are written for Python3. It uses the following packages:
+The macros are written for Python3.12. It uses the following packages:
 
 * Numpy
 * Astropy
 * Scipy
 * Matplotlib
 * Pandas
-* aacgmv2
+* OTSO
 
 <h2>Description</h2>
 
