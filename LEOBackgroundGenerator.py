@@ -6,7 +6,7 @@ from astropy.constants import R_earth, m_p, m_n, c
 from scipy.optimize import fsolve
 from scipy.interpolate import interp1d
 from scipy.integrate import quad
-import aacgmv2
+import OTSO 
 
 class LEOBackgroundGenerator:
     """
@@ -65,11 +65,14 @@ class LEOBackgroundGenerator:
 
     
     
-    def __init__(self, altitude, inclination, geomlat,GeoCutoff=None, solarmodulation=None , InputFile=None,AtmNum=0,AtmMass=0):
+    def __init__(self, altitude,latitude ,longitude, date,inclination, geomlat, GeoCutoff=None, solarmodulation=None , InputFile=None,AtmNum=0,AtmMass=0):
         self.InputFile_global0=""
         self.Alt = altitude  # instrument altitude (km)
+        self.latitude = latitude #geographical instrument latitude (deg)
+        self.longitude = longitude #geographical longitude latitude (deg)
+        self.date = pd.to_datetime(date) # date of the orbit (datetime)
         self.magl = inclination  # orbit inclination (deg.)
-        self.geomlat = geomlat  #geomagnetic latitude (rad)
+        self.geomlat = geomlat  #geomagnetic latitude (rad) 
         self.AvGeomagCutOff = GeoCutoff #cutoff rigidity (GV)
         self.InputFile_global =  InputFile
         self.AtomicNumber=AtmNum
@@ -95,11 +98,31 @@ class LEOBackgroundGenerator:
         
         
         if GeoCutoff is None :
-            self.AvGeomagCutOff = self.ComputeRcut(self.geomlat, self.Alt)
-        
+            self.AvGeomagCutOff = self.ComputeRcut(self.Alt,self.longitude,self.latitude,self.date)
+    
+    
+    
 
+    def ComputeRcut(self,altitude,longitude,latitude,date):
+        """
+        The dipole approximation is not exact
+        Therefore we will use the python tool OTSO 
+        https://doi.org/10.1029/2022JA031061
+        https://github.com/NLarsen15/OTSOpy
+        """        
+        flight = OTSO.flight(latitudes=[self.latitude], longitudes=[self.longitude],dates=[self.date],
+                         altitudes=[self.Alt],cutoff_comp="Vertical",corenum=1)        
+
+
+        Rcut = flight[0]["Rc"].iloc[0]
+      
+        return Rcut
+
+
+ 
+    """ #
     def ComputeRcut(self,geomaglat, altitude):
-        """ Average Geomagnetic cutoff in GV
+         Average Geomagnetic cutoff in GV
             for a dipole approximations
             Equation 4 Smart et al. 2005
             doi:10.1016/j.asr.2004.09.015
@@ -107,7 +130,7 @@ class LEOBackgroundGenerator:
          arguments : geomaglat [rad] 
          
          return : cutoff [GV]   
-        """
+        
         EarthRadius = R_earth.to('km').value
         R_E = R_earth.to('cm').value
         # g 01 term (in units of G) from IGRF-12 for 2020-25 : 29405
@@ -119,9 +142,10 @@ class LEOBackgroundGenerator:
         
         Rcut = (M/4*(1+altitude/EarthRadius)**(-2.0)
                              * np.cos(geomaglat)**4)
-                           
+			     
+                                   
         return Rcut                     
-
+    """
 
 
     def log_interp1d(self, xx, yy, fill='extrapolate', kind='linear'):
@@ -332,7 +356,6 @@ class LEOBackgroundGenerator:
     def SazonovAlbedoPhotons(self, E, geomaglat, solarmod):
         """ Equation 7 and 1 from Sazonov et al. 2007,
             hard X-ray surface brightness of the Earth’s atmosphere
-            the rigidity cut-off is computed at the Earth's surface
             the zenith angle is integrated to compute the angle-averaged surface brightness
            Return a flux in ph /cm2 /s /keV /sr
         """
@@ -347,8 +370,8 @@ class LEOBackgroundGenerator:
         phi = solarmod / 1000  # GV
         
         # the rigidity cut-off used in the formula is computed at the geomagnetic latitude of the orbit position
-        # the C intensity factor is ony integrated in zenith angle
-        R_c = self.ComputeRcut(geomaglat, 40)
+        # the C intensity factor is only integrated in zenith angle
+        R_c = self.ComputeRcut(40.,self.longitude,self.latitude,self.date)
         part1 = (3./(5*np.pi))*1.47*0.0178*((((phi/2.8)**0.4) + ((phi/2.8)**1.5))**(-1))
         part2 = 1.3*(phi**0.25)*(1. + 2.5*(phi**0.4))
         f_E = 1./(((E/44.)**(-5)) + ((E/44.)**(1.4)))
@@ -402,7 +425,7 @@ class LEOBackgroundGenerator:
         """
         
         # Scaling from Mizuno et al. 2004
-        Rcut_desired = self.ComputeRcut(self.geomlat, 40)
+        Rcut_desired = self.ComputeRcut(40.,self.longitude,self.latitude,self.date)
         Rcut_Mizuno = 4.5
         ScalerMizuno = pow(Rcut_desired/Rcut_Mizuno, -1.13)
         
@@ -473,33 +496,32 @@ class LEOBackgroundGenerator:
 
         EnergyMeV = 0.001*np.copy(np.asarray(E, dtype=float))
 
-        Rcut = self.AvGeomagCutOff
         
-        if Rcut >= self.ComputeRcut(0.2, self.Alt) and Rcut <= self.ComputeRcut(0, self.Alt):
+        if abs(self.geomlat) <= 0.2 and abs(self.geomlat) >= 0:
             FluxU = self.MizunoCutoffpl(0.136, 0.123, 0.155, 0.51, EnergyMeV)
             FluxD = self.MizunoCutoffpl(0.136, 0.123, 0.155, 0.51, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(0.3, self.Alt) and Rcut <= self.ComputeRcut(0.2, self.Alt):
+        elif abs(self.geomlat) <= 0.3 and abs(self.geomlat) >= 0.2:
             FluxU = self.MizunoBrokenpl(0.1, 0.87, 600, 2.53, EnergyMeV)
             FluxD = self.MizunoBrokenpl(0.1, 0.87, 600, 2.53, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(0.4, self.Alt) and Rcut <= self.ComputeRcut(0.3, self.Alt):
+        elif abs(self.geomlat) <= 0.4 and abs(self.geomlat) >= 0.3:
             FluxU = self.MizunoBrokenpl(0.1, 1.09, 600, 2.40, EnergyMeV)
             FluxD = self.MizunoBrokenpl(0.1, 1.09, 600, 2.40, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(0.5, self.Alt) and Rcut <= self.ComputeRcut(0.4, self.Alt):
+        elif abs(self.geomlat) <= 0.5 and abs(self.geomlat) >= 0.4:
             FluxU = self.MizunoBrokenpl(0.1, 1.19, 600, 2.54, EnergyMeV)
             FluxD = self.MizunoBrokenpl(0.1, 1.19, 600, 2.54, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(0.6, self.Alt) and Rcut <= self.ComputeRcut(0.5, self.Alt):
+        elif abs(self.geomlat) <= 0.6 and abs(self.geomlat) >= 0.5:
             FluxU = self.MizunoBrokenpl(0.1, 1.18, 400, 2.31, EnergyMeV)
             FluxD = self.MizunoBrokenpl(0.1, 1.18, 400, 2.31, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(0.7, self.Alt) and Rcut <= self.ComputeRcut(0.6, self.Alt):
+        elif abs(self.geomlat) <= 0.7 and abs(self.geomlat) >= 0.6:
             FluxD = self.MizunoBrokenpl(0.13, 1.1, 300, 2.25, EnergyMeV)
             FluxU = self.MizunoBrokenpl(0.13, 1.1, 300, 2.95, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(0.8, self.Alt) and Rcut <= self.ComputeRcut(0.7, self.Alt):
+        elif abs(self.geomlat) <= 0.8 and abs(self.geomlat) >= 0.7:
             FluxD = self.MizunoBrokenpl(0.2, 1.5, 400, 1.85, EnergyMeV)
             FluxU = self.MizunoBrokenpl(0.2, 1.5, 400, 4.16, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(0.9, self.Alt) and Rcut <= self.ComputeRcut(0.8, self.Alt):
+        elif abs(self.geomlat) <= 0.9 and abs(self.geomlat) >= 0.8:
             FluxD = self.MizunoCutoffpl(0.23, 0.017, 1.83, 0.177, EnergyMeV)
             FluxU = self.MizunoBrokenpl(0.23, 1.53, 400, 4.68, EnergyMeV)
-        elif Rcut <= self.ComputeRcut(0.9, self.Alt):
+        elif abs(self.geomlat) >= 0.9:
             FluxD = self.MizunoCutoffpl(0.44, 0.037, 1.98, 0.21, EnergyMeV)
             FluxU = self.MizunoBrokenpl(0.44, 2.25, 400, 3.09, EnergyMeV)
 
@@ -649,17 +671,16 @@ class LEOBackgroundGenerator:
         """
         EnergyMeV = 0.001*np.copy(np.asarray(E, dtype=float))
 
-        Rcut = self.AvGeomagCutOff
        
-        if Rcut >= self.ComputeRcut(0.3, self.Alt) and Rcut <= self.ComputeRcut(0.0, self.Alt):
+        if abs(self.geomlat) <= 0.3 and abs(self.geomlat) >= 0.0:
             Flux = self.MizunoBrokenpl(0.3, 2.2, 3000, 4.0, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(0.6, self.Alt) and Rcut <= self.ComputeRcut(0.3, self.Alt):
+        elif abs(self.geomlat) <= 0.6 and abs(self.geomlat) >= 0.3:
             Flux = self.MizunoPl(0.3, 2.7, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(0.8, self.Alt) and Rcut <= self.ComputeRcut(0.6, self.Alt):
+        elif abs(self.geomlat) <= 0.8 and abs(self.geomlat) >= 0.6:
             Flux = self.MizunoPlhump(0.3, 3.3, 2/10000, 1.5, 2.3, EnergyMeV)
-        elif Rcut >= self.ComputeRcut(0.9, self.Alt) and Rcut <= self.ComputeRcut(0.8, self.Alt):
+        elif abs(self.geomlat) <= 0.9 and abs(self.geomlat) >= 0.8:
             Flux = self.MizunoPlhump(0.3, 3.5, 1.6/1000, 2.0, 1.6, EnergyMeV)
-        elif Rcut <= self.ComputeRcut(0.9, self.Alt):
+        elif abs(self.geomlat) >= 0.9:
             Flux = self.MizunoPl(0.3, 2.5, EnergyMeV)
 
         return Flux/10**7
@@ -671,21 +692,21 @@ class LEOBackgroundGenerator:
         """
         EnergyMeV = 0.001*np.copy(np.asarray(E, dtype=float))
 
-        Rcut = self.AvGeomagCutOff
         
-        if Rcut >= self.ComputeRcut(0.3, self.Alt) and Rcut <= self.ComputeRcut(0.0, self.Alt):
+        
+        if abs(self.geomlat) <= 0.3 and abs(self.geomlat) >= 0.0 :
             Flux = self.MizunoBrokenpl(0.3, 2.2, 3000, 4.0, EnergyMeV)
             ratio = 3.3
-        elif Rcut >= self.ComputeRcut(0.6, self.Alt) and Rcut <= self.ComputeRcut(0.3, self.Alt):
+        elif abs(self.geomlat) <= 0.6 and abs(self.geomlat) >= 0.3 :
             Flux = self.MizunoPl(0.3, 2.7, EnergyMeV)
             ratio = 1.66
-        elif Rcut >= self.ComputeRcut(0.8, self.Alt) and Rcut <= self.ComputeRcut(0.6, self.Alt):
+        elif abs(self.geomlat) <= 0.8 and abs(self.geomlat) >= 0.6:
             Flux = self.MizunoPlhump(0.3, 3.3, 2/10000, 1.5, 2.3, EnergyMeV)
             ratio = 1.0
-        elif Rcut >= self.ComputeRcut(0.9, self.Alt) and Rcut <= self.ComputeRcut(0.8, self.Alt):
+        elif abs(self.geomlat) <= 0.9 and abs(self.geomlat) >= 0.8 :
             Flux = self.MizunoPlhump(0.3, 3.5, 1.6/1000, 2.0, 1.6, EnergyMeV)
             ratio = 1.0
-        elif Rcut <= self.ComputeRcut(0.9, self.Alt):
+        elif abs(self.geomlat) >= 0.9 :
             Flux = self.MizunoPl(0.3, 2.5, EnergyMeV)
             ratio = 1.0
 
