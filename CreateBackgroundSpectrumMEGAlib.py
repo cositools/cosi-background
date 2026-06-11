@@ -5,6 +5,11 @@
     LEOBackgroundGenerator to be used as input for the Step1
     *.source for Activation Simulations with MEGAlib.
 """
+import sys
+if sys.version_info.minor != 12:
+    raise Exception(f"OTSO only work for Python 3.12 (your version is {sys.version})")
+
+
 
 import numpy as np
 import pandas as pd
@@ -14,6 +19,9 @@ import sys
 import argparse
 
 from LEOBackgroundGenerator import LEOBackgroundGenerator as LEO
+
+
+
 
 # Instantiate the parser
 pars = argparse.ArgumentParser(description='Create a .dat file containing '
@@ -30,7 +38,16 @@ pars.add_argument('-i', '--inclination', type=float, nargs='?',
                   default=0., help='Inclination of the orbit in degree [0.]')
 
 pars.add_argument('-a', '--altitude', type=float, nargs='?',
-                  default=550., help='Altitude of the orbit in km [550.]')
+                  default=530., help='Altitude of the orbit in km [530.]')
+
+pars.add_argument('-lat', '--latitude', type=float, nargs='?',
+                  default=None, help='Latitude of the orbit in deg [None]')
+
+pars.add_argument('-lon', '--longitude', type=float, nargs='?',
+                  default=None, help='longitude of the orbit in km [None]')
+
+pars.add_argument('-da', '--date', type=str, nargs='?',
+                  default="04-12-2027", help='Date time of the orbit in the format dd-mm-yyyy hh:min:s [04-12-2027]')
 
 pars.add_argument('-es', '--energyscale', type=str, nargs='?',
                   default="log", help='Energy range in lin or log space [log]')
@@ -42,7 +59,7 @@ pars.add_argument('-eh', '--ehigh', type=float, nargs='?',
                   default=10, help='Log10 of the highest energy limit in keV [10]')
 
 pars.add_argument('-c', '--cutoff', type=float, nargs='?',
-                  default=None, help='Value of the geocutoff [compute with geomlat]')
+                  default=None, help='Value of the geocutoff')
                   
 pars.add_argument('-s', '--solarmodulation', type=float, nargs='?',
                   default=650., help='solar modulation (550 min and 1100 max) [650]')
@@ -89,7 +106,9 @@ if args.components == "HadronSpectra" and (args.HadronSpectrum=="." or args.Atom
 Geomlat = args.geomlat
 Inclination = args.inclination
 Altitude = args.altitude
-
+Longitude = args.longitude
+Latitude = args.latitude
+Date = args.date
 Elow = args.elow
 Ehigh = args.ehigh
 
@@ -110,43 +129,48 @@ hadronSpectrumName = args.HadronSpectrum
 
 Energyrange = args.energyscale
 
-#print the chosen parameter
-print("###############################################")
-if Geomlat is not None :
-    print(f"Geomagnetic latitude : {Geomlat}")
+if __name__ == '__main__':
 
-print(f"Altitude : {Altitude} km")
-print(f"Energy range [10e{Elow},10e{Ehigh}] keV with {Energyrange} space")
-if Geocutoff is not None :
-    print(f"Cutoff value : {Geocutoff} GV")
+    #print the chosen parameter
+    print("###############################################")
+    if Geomlat is not None :
+        print(f"Geomagnetic latitude : {Geomlat}")
 
-print(f"Solar modulation : {solarmod} MV")
-if EarthOccultation :
-    print("Earth occultation done by cosima -> solid angle for all source is 4*Pi")
+    print(f"Altitude : {Altitude} km")
+    print(f"Energy range [10e{Elow},10e{Ehigh}] keV with {Energyrange} space")
 
-print(f"Output path : {outputpath}")
-print("###############################################")
+    if Geocutoff is not None :
+        print(f"Geomagnetic cut-off value : {Geocutoff} GV")
+    else:
+        if Longitude == None or Latitude == None :
+            print("You need to specify a lon/lat/date in order to compute the geo cutoff with OTSO")
+            sys.exit()
+        else:
+            print(f"Geomagnetic cut-off not set so we will compute it using OTSO for the attitude :")
+            print(f"   longitude: {Longitude} deg")
+            print(f"   latitude: {Latitude} deg")
+            print(f"   Date: {Date}")
+
+    print(f"Solar modulation : {solarmod} MV")
+    if EarthOccultation :
+        print("Earth occultation done by cosima -> solid angle for all source is 4*Pi")
+
+    print(f"Output path : {outputpath}")
+    print("###############################################")
 
 
-LEOClass = LEO(1.0*Altitude, 1.0*Inclination,Geomlat,Geocutoff,solarmod,hadronSpectrumName,AtomicNumber,AtomicMass)
+    LEOClass = LEO(1.0*Altitude,Latitude,Longitude ,Date,1.0*Inclination,Geomlat,Geocutoff,solarmod,hadronSpectrumName,AtomicNumber,AtomicMass)
 
-ViewAtmo = 2*np.pi * (np.cos(np.deg2rad(LEOClass.HorizonAngle)) + 1)
-ViewSky = 2*np.pi * (1-np.cos(np.deg2rad(LEOClass.HorizonAngle)))
+    ViewAtmo = 2*np.pi * (np.cos(np.deg2rad(LEOClass.HorizonAngle)) + 1)
+    ViewSky = 2*np.pi * (1-np.cos(np.deg2rad(LEOClass.HorizonAngle)))
 
+    if components == None :
 
-if Geomlat is None and Geocutoff is None :
-    print("Error : You need to enter atleast a cut off rigidity or a geomag lat value")
-    sys.exit()
+        if Geomlat is None :
+            print("Error : You need to enter a geomagnetic lat (option -g) value if you want the component AtmosphericNeutrons and AlbedoPhotons and others secondaries ! ")
+            sys.exit()
 
-
-
-if components == None :
-
-    if Geomlat is None :
-        print("Error : You need to enter a geomagnetic lat (option -g) value if you want the component AtmosphericNeutrons and AlbedoPhotons ! ")
-        sys.exit()
-
-    Particle = ["AtmosphericNeutrons", 
+        Particle = ["AtmosphericNeutrons", 
          "CosmicPhotons", 
 	 "PrimaryProtons",
          "SecondaryProtonsUpward","SecondaryProtonsDownward", "PrimaryAlphas", "PrimaryElectrons",
@@ -154,78 +178,83 @@ if components == None :
          "AlbedoPhotons","HadronSpectra"
          ]
     
-    if EarthOccultation :
-        fac = np.full(len(Particle),4*np.pi) 
+        if EarthOccultation :
+            fac = np.full(len(Particle),4*np.pi) 
     
-    else :
+        else :
     
-        fac = [ViewAtmo, ViewSky,ViewSky,2*np.pi, 2*np.pi, ViewSky, ViewSky,ViewSky ,ViewAtmo,ViewAtmo,ViewAtmo,ViewSky]         
+            fac = [ViewAtmo, ViewSky,ViewSky,2*np.pi, 2*np.pi, ViewSky, ViewSky,ViewSky ,ViewAtmo,ViewAtmo,ViewAtmo,ViewSky]         
 
         
 
-else :
+    else :
+        
 
-
-    Particle = components.split(",")
-    fac =[]
+        Particle = components.split(",")
+        fac =[]
     
 
-    #solid angle
+        #solid angle
 
-    if EarthOccultation :
-        fac = np.full(len(Particle),4*np.pi)
+        if EarthOccultation :
+            fac = np.full(len(Particle),4*np.pi)
      
-    else :               
-        for f in Particle:
+        else :               
+            for f in Particle:
     
-            if (f == "AtmosphericNeutrons" or f == "AlbedoPhotons" ) and Geomlat is None :  
-                print("Error : You need to enter a geomagnetic lat (option -g) value if "+ 
-                        "you want the component AtmosphericNeutrons and AlbedoPhotons ! ")
-                sys.exit()
-            if f == "AtmosphericNeutrons" or f=="AlbedoPhotons" or f == "SecondaryElectrons" or f == "SecondaryPositrons":
-                fac.append(ViewAtmo)
+                if (f == "AtmosphericNeutrons" or f.startswith("Secondary")  ) and Geomlat is None :  
+                    print("Error : You need to enter a geomagnetic lat (option -g) value if "+ 
+                        "you want the requested components ! ")
+                    sys.exit()
+
+                if f == "AlbedoPhotons" and (Longitude == None or Latitude == None)  :
+                    print("Error : you need to specify lon/lat/date for this component")
+                    sys.exit()
+
+                if f == "AtmosphericNeutrons" or f=="AlbedoPhotons" or f == "SecondaryElectrons" or f == "SecondaryPositrons":
+                    fac.append(ViewAtmo)
             
-            if f.startswith("Primary") or f == "CosmicPhotons" or f.startswith("Hadron"):
-                fac.append(ViewSky)
+                if f.startswith("Primary") or f == "CosmicPhotons" or f.startswith("Hadron"):
+                    fac.append(ViewSky)
           
-            if f.startswith("SecondaryProtons"):
-                fac.append(2*np.pi)                             
+                if f.startswith("SecondaryProtons"):
+                    fac.append(2*np.pi)                             
                     
 
-for i in range(0, len(Particle)):
+    for i in range(0, len(Particle)):
 
-    if Energyrange == "log" :	
-        Energies = np.logspace(Elow, Ehigh, num=100, endpoint=True, base=10.0)
-    elif Energyrange == "lin":
-        Energies = np.linspace(np.power(10,Elow), np.power(10,Ehigh), 1000 )    
-	
-    if Geocutoff==None :
-        Output = "%s/%s_Spec_%skm_%sdeg_%ssolarmod" % (outputpath,Particle[i], float(Altitude), float(Inclination),float(solarmod))
-    else :
-        Output = "{0}/{1}_Spec_{2}km_{3}deg_{4:.3f}cutoff_{5}solarmod".format(outputpath,Particle[i], float(Altitude), float(Inclination),float(Geocutoff),float(solarmod))
-
-    if Particle[i]=='HadronSpectra':
-        HadronString="Z{0}_A{1}".format(AtomicNumber,AtomicMass)
-        Output = Output + HadronString
-
-    Output = Output + ".dat"
-        
-    IntSpectrum = np.trapz(getattr(LEOClass, Particle[i])(Energies),Energies)
-    print(Particle[i], IntSpectrum*fac[i], " #/cm^2/s")
-    with open(Output, 'w') as f:
-        print('# %s spectrum ' % Particle[i], file=f)
-        if Particle[i]=='HadronSpectra':
-            print('# For hadron spectra: Z= %d, A= %f' % (AtomicNumber,AtomicMass), file=f)
-        print('# Format: DP <energy in keV> <shape of differential spectrum [XX/keV]>', file=f)
-        print('# Although cosima doesn\'t use it the spectrum here is given as a flux in #/cm^2/s/keV', file=f)
-        print('# Integrated over %s sr' % fac[i], file=f)
-        print('# Integral Flux: %s #/cm^2/s' % (IntSpectrum*fac[i]), file=f)
-        print('', file=f)
-        if Energyrange == "log" :    
-            print('IP LOGLOG', file=f)
+        if Energyrange == "log" :	
+            Energies = np.logspace(Elow, Ehigh, num=100, endpoint=True, base=10.0)
         elif Energyrange == "lin":
-            print('IP LINLOG', file=f)	
-        print('', file=f)
-        for j in range(0, len(Energies)):
-            print('DP', Energies[j], getattr(LEOClass, Particle[i])(Energies[j]), file=f)
-        print('EN', file=f)
+            Energies = np.linspace(np.power(10,Elow), np.power(10,Ehigh), 1000 )    
+	
+        if Geocutoff==None :
+            Output = "%s/%s_Spec_%skm_%sdeg_%ssolarmod" % (outputpath,Particle[i], float(Altitude), float(Inclination),float(solarmod))
+        else :
+            Output = "{0}/{1}_Spec_{2}km_{3}deg_{4:.3f}cutoff_{5}solarmod".format(outputpath,Particle[i], float(Altitude), float(Inclination),float(Geocutoff),float(solarmod))
+
+        if Particle[i]=='HadronSpectra':
+            HadronString="Z{0}_A{1}".format(AtomicNumber,AtomicMass)
+            Output = Output + HadronString
+
+        Output = Output + ".dat"
+        
+        IntSpectrum = np.trapz(getattr(LEOClass, Particle[i])(Energies),Energies)
+        print(Particle[i], IntSpectrum*fac[i], " #/cm^2/s")
+        with open(Output, 'w') as f:
+            print('# %s spectrum ' % Particle[i], file=f)
+            if Particle[i]=='HadronSpectra':
+                print('# For hadron spectra: Z= %d, A= %f' % (AtomicNumber,AtomicMass), file=f)
+            print('# Format: DP <energy in keV> <shape of differential spectrum [XX/keV]>', file=f)
+            print('# Although cosima doesn\'t use it the spectrum here is given as a flux in #/cm^2/s/keV', file=f)
+            print('# Integrated over %s sr' % fac[i], file=f)
+            print('# Integral Flux: %s #/cm^2/s' % (IntSpectrum*fac[i]), file=f)
+            print('', file=f)
+            if Energyrange == "log" :    
+                print('IP LOGLOG', file=f)
+            elif Energyrange == "lin":
+                print('IP LINLOG', file=f)	
+            print('', file=f)
+            for j in range(0, len(Energies)):
+                print('DP', Energies[j], getattr(LEOClass, Particle[i])(Energies[j]), file=f)
+            print('EN', file=f)
