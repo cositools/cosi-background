@@ -239,7 +239,7 @@ if __name__ == '__main__':
 
         Output = Output + ".dat"
         
-        IntSpectrum = np.trapz(getattr(LEOClass, Particle[i])(Energies),Energies)
+        IntSpectrum = np.trapezoid(getattr(LEOClass, Particle[i])(Energies),Energies)
         print(Particle[i], IntSpectrum*fac[i], " #/cm^2/s")
         with open(Output, 'w') as f:
             print('# %s spectrum ' % Particle[i], file=f)
