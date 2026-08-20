@@ -1,4 +1,4 @@
-__author__ = 'Paolo Cumani, Jurgen Kiener, Vincent Tatischeff, Andreas Zoglauer | Updated by Savitri Gallego and Francesco Fenu'
+__author__ = 'Paolo Cumani, Jurgen Kiener, Vincent Tatischeff, Andreas Zoglauer | Updated by Savitri Gallego, Francesco Fenu and Valentina Fioretti'
 
 import numpy as np
 import pandas as pd
@@ -96,7 +96,11 @@ class LEOBackgroundGenerator:
                             (EarthRadius + AtmosphereHeight)
                             / (EarthRadius+self.Alt)))
         
-        
+        #compute the Rcutoff at altitude 40km for the AlbedoPhotons
+        if self.longitude is not None and self.latitude is not None : 
+            self.Rcut_40km = self.ComputeRcut(40.,self.longitude,self.latitude,self.date)
+	
+	
         if GeoCutoff is None :
             self.AvGeomagCutOff = self.ComputeRcut(self.Alt,self.longitude,self.latitude,self.date)
     
@@ -110,9 +114,9 @@ class LEOBackgroundGenerator:
         https://doi.org/10.1029/2022JA031061
         https://github.com/NLarsen15/OTSOpy
         """        
-        flight = OTSO.flight(latitudes=[self.latitude], longitudes=[self.longitude],dates=[self.date],
-                         altitudes=[self.Alt],cutoff_comp="Vertical",corenum=1)        
-
+            
+        flight = OTSO.flight(latitudes=[latitude], longitudes=[longitude],dates=[date],
+                         altitudes=[altitude],cutoff_comp="Vertical",corenum=1)
 
         Rcut = flight[0]["Rc"].iloc[0]
       
@@ -371,7 +375,7 @@ class LEOBackgroundGenerator:
         
         # the rigidity cut-off used in the formula is computed at the geomagnetic latitude of the orbit position
         # the C intensity factor is only integrated in zenith angle
-        R_c = self.ComputeRcut(40.,self.longitude,self.latitude,self.date)
+        R_c = self.Rcut_40km
         part1 = (3./(5*np.pi))*1.47*0.0178*((((phi/2.8)**0.4) + ((phi/2.8)**1.5))**(-1))
         part2 = 1.3*(phi**0.25)*(1. + 2.5*(phi**0.4))
         f_E = 1./(((E/44.)**(-5)) + ((E/44.)**(1.4)))
@@ -425,7 +429,7 @@ class LEOBackgroundGenerator:
         """
         
         # Scaling from Mizuno et al. 2004
-        Rcut_desired = self.ComputeRcut(40.,self.longitude,self.latitude,self.date)
+        Rcut_desired = self.Rcut_40km
         Rcut_Mizuno = 4.5
         ScalerMizuno = pow(Rcut_desired/Rcut_Mizuno, -1.13)
         
