@@ -47,7 +47,7 @@ pars.add_argument('-lon', '--longitude', type=float, nargs='?',
                   default=None, help='longitude of the orbit in km [None]')
 
 pars.add_argument('-da', '--date', type=str, nargs='?',
-                  default="04-12-2027", help='Date time of the orbit in the format dd-mm-yyyy hh:min:s [04-12-2027]')
+                  default="2027-04-15", help='Date time of the orbit in the format yyy-mm-dd hh:min:s [2027-04-15]')
 
 pars.add_argument('-es', '--energyscale', type=str, nargs='?',
                   default="log", help='Energy range in lin or log space [log]')
@@ -175,7 +175,7 @@ if __name__ == '__main__':
 	 "PrimaryProtons",
          "SecondaryProtonsUpward","SecondaryProtonsDownward", "PrimaryAlphas", "PrimaryElectrons",
          "PrimaryPositrons", "SecondaryElectrons", "SecondaryPositrons",
-         "AlbedoPhotons","HadronSpectra"
+         "AlbedoPhotons"
          ]
     
         if EarthOccultation :
@@ -183,7 +183,7 @@ if __name__ == '__main__':
     
         else :
     
-            fac = [ViewAtmo, ViewSky,ViewSky,2*np.pi, 2*np.pi, ViewSky, ViewSky,ViewSky ,ViewAtmo,ViewAtmo,ViewAtmo,ViewSky]         
+            fac = [ViewAtmo, ViewSky,ViewSky,2*np.pi, 2*np.pi, ViewSky, ViewSky,ViewSky ,4*np.pi,4*np.pi,ViewAtmo]         
 
         
 
@@ -211,9 +211,12 @@ if __name__ == '__main__':
                     print("Error : you need to specify lon/lat/date for this component")
                     sys.exit()
 
-                if f == "AtmosphericNeutrons" or f=="AlbedoPhotons" or f == "SecondaryElectrons" or f == "SecondaryPositrons":
+                if f == "AtmosphericNeutrons" or f=="AlbedoPhotons" :
                     fac.append(ViewAtmo)
-            
+					
+                if f == "SecondaryElectrons" or f == "SecondaryPositrons" :
+                    fac.append(4*np.pi)
+					
                 if f.startswith("Primary") or f == "CosmicPhotons" or f.startswith("Hadron"):
                     fac.append(ViewSky)
           
