@@ -380,8 +380,12 @@ class LEOBackgroundGenerator:
         part1 = (3./(5*np.pi))*1.47*0.0178*((((phi/2.8)**0.4) + ((phi/2.8)**1.5))**(-1))
         part2 = 1.3*(phi**0.25)*(1. + 2.5*(phi**0.4))
         f_E = 1./(((E/44.)**(-5)) + ((E/44.)**(1.4)))
-        I_albedo = quad(lambda x: 2.*np.pi*np.cos(x)*(1. + np.cos(x))*np.sin(x), 0, np.deg2rad(thetamax))
-        C_int = part1*I_albedo[0]*(1./np.sqrt(1. + ((R_c/part2)**2.)))
+        # x = nadir angle seen from the satellite; mu_e = cos(zenith angle at the emission point)
+        # Sazonov's C is per cm2 of atmosphere per sr, so the radiance seen is C/mu_e ∝ (1 + mu_e)
+        k = (EarthRadius + self.Alt)/(EarthRadius + 40.)  # 40 km = AtmosphereHeight used for HorizonAngle
+        mu_e = lambda x: np.sqrt(np.clip(1. - (k*np.sin(x))**2, 0., 1.))
+        I_albedo = quad(lambda x: 2.*np.pi*(1. + mu_e(x))*np.sin(x), 0, np.deg2rad(thetamax))        
+		C_int = part1*I_albedo[0]*(1./np.sqrt(1. + ((R_c/part2)**2.)))
         Flux[E > 2000] = 0.
         Flux[E <= 2000] = C_int*f_E/omega
 
