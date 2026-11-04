@@ -195,11 +195,12 @@ class LEOBackgroundGenerator:
 
         EnergyMeV = 0.001*np.copy(np.asarray(E, dtype=float))
         Flux = np.copy(np.asarray(E, dtype=float))
-
-        a = 0.0003 + (7.0-5.0*solac)*0.001*(1-np.tanh(np.deg2rad(180-4.0*self.geomlat)))
-        b = 0.0140 + (1.4-0.9*solac)*0.1*(1-np.tanh(np.deg2rad(180-3.5*self.geomlat)))
+        lam = np.rad2deg(abs(self.geomlat))
+		
+        a = 0.0003 + (7.0-5.0*solac)*0.001*(1-np.tanh(np.deg2rad(180-4.0*lam)))
+        b = 0.0140 + (1.4-0.9*solac)*0.1*(1-np.tanh(np.deg2rad(180-3.5*lam)))
         c = 180 - 42*(1-np.tanh(np.deg2rad(180-5.5*self.geomlat)))
-        d = -0.008 + (6.0-1.0*solac)*0.001*(1-np.tanh(np.deg2rad(180-4.4*self.geomlat)))
+        d = -0.008 + (6.0-1.0*solac)*0.001*(1-np.tanh(np.deg2rad(180-4.4*lam)))
 
         Slope1 = -0.29 * np.exp(-Pressure/7.5) + 0.735
         Norm1 = (a*Pressure + b)*np.exp(-Pressure/c) + d
