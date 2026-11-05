@@ -118,7 +118,7 @@ class LEOBackgroundGenerator:
         flight = OTSO.flight(latitudes=[latitude], longitudes=[longitude],dates=[date],
                          altitudes=[altitude],cutoff_comp="Vertical")
 
-        Rcut = flight[0]["Rc"].iloc[0]
+        Rcut = flight[0]["Rc [GV]"].iloc[0]
       
         return Rcut
 
