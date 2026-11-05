@@ -316,7 +316,7 @@ class LEOBackgroundGenerator:
         Return a flux in ph /cm2 /s /keV /sr
         """
         filename = 'Data/LATBackground.dat'
-        data = pd.read_table(filename, sep='\s+', header=0, comment='#')
+        data = pd.read_table(filename, sep="\s+", header=0, comment='#')
 
         fGC = self.log_interp1d(data['Energy'], data['FluxGCAv'], fill="NaN")
 
@@ -331,7 +331,7 @@ class LEOBackgroundGenerator:
         Return a flux in ph /cm2 /s /keV /sr
         """
         filename = 'Data/LATBackground.dat'
-        data = pd.read_table(filename, sep='\s+', header=0, comment='#')
+        data = pd.read_table(filename, sep="\s+", header=0, comment='#')
 
         fDisk = self.log_interp1d(data['Energy'], data['FluxDiskAv'], fill="NaN")
 
