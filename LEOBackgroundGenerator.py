@@ -316,7 +316,7 @@ class LEOBackgroundGenerator:
         Return a flux in ph /cm2 /s /keV /sr
         """
         filename = 'Data/LATBackground.dat'
-        data = pd.read_table(filename, sep="\s+", header=0, comment='#')
+        data = pd.read_table(filename, sep=r'\s+', header=0, comment='#')
 
         fGC = self.log_interp1d(data['Energy'], data['FluxGCAv'], fill="NaN")
 
@@ -331,7 +331,7 @@ class LEOBackgroundGenerator:
         Return a flux in ph /cm2 /s /keV /sr
         """
         filename = 'Data/LATBackground.dat'
-        data = pd.read_table(filename, sep="\s+", header=0, comment='#')
+        data = pd.read_table(filename, sep=r'\s+', header=0, comment='#')
 
         fDisk = self.log_interp1d(data['Energy'], data['FluxDiskAv'], fill="NaN")
 
@@ -552,10 +552,10 @@ class LEOBackgroundGenerator:
         filename_2019 = 'Data/AguilarPositron_2019.dat' #to do
         filename_2021 = 'Data/AMS21_Electrons_Positrons_rescaledTo27.dat'
         
-        data_2014 = pd.read_table(filename, sep='\s+')
+        data_2014 = pd.read_table(filename, sep=r'\s+')
         data_2018 = pd.read_csv(filename_2018,sep=" ",skipinitialspace=True)
         data_2019 = pd.read_csv(filename_2019,sep=" ",skipinitialspace=True)
-        data_2021 = pd.read_csv(filename_2021,sep="\s+",skipinitialspace=True)
+        data_2021 = pd.read_csv(filename_2021,sep=r"\s+",skipinitialspace=True)
         
         data = pd.DataFrame({})
         
@@ -729,7 +729,7 @@ class LEOBackgroundGenerator:
         filename = 'Data/AguilarProton.dat'
         Z = 1.
         A = 1.
-        data = pd.read_table(filename, sep='\s+')
+        data = pd.read_table(filename, sep=r'\s+')
         E0 = A * ((m_p * c**2).to('GeV')).value
         
         #To convert flux from part / (m2 sr s GV) to part /  (cm2 sr s GeV)
@@ -764,7 +764,7 @@ class LEOBackgroundGenerator:
         filename = 'Data/AguilarAlphas.dat'
         Z = 2.
         A = 4.
-        data = pd.read_table(filename, sep='\s+')
+        data = pd.read_table(filename, sep=r'\s+')
         E0 = A * ((m_p * c**2).to('GeV')).value
         
         #To convert flux from part / (m2 sr s GV) to part /  (cm2 sr s GeV)
@@ -804,7 +804,7 @@ class LEOBackgroundGenerator:
         filename = self.InputFile_global
         Z = float(self.AtomicNumber)
         A = float(self.AtomicMass)
-        data = pd.read_table(filename, sep='\s+')
+        data = pd.read_table(filename, sep=r'\s+')
         E0 = A * ((m_p * c**2).to('GeV')).value
         
         #To convert flux from part / (m2 sr s GV) to part /  (cm2 sr s GeV)
