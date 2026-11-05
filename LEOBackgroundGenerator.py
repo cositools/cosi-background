@@ -382,6 +382,7 @@ class LEOBackgroundGenerator:
         f_E = 1./(((E/44.)**(-5)) + ((E/44.)**(1.4)))
         # x = nadir angle seen from the satellite; mu_e = cos(zenith angle at the emission point)
         # Sazonov's C is per cm2 of atmosphere per sr, so the radiance seen is C/mu_e ∝ (1 + mu_e)
+        EarthRadius = R_earth.to('km').value
         k = (EarthRadius + self.Alt)/(EarthRadius + 40.)  # 40 km = AtmosphereHeight used for HorizonAngle
         mu_e = lambda x: np.sqrt(np.clip(1. - (k*np.sin(x))**2, 0., 1.))
         I_albedo = quad(lambda x: 2.*np.pi*(1. + mu_e(x))*np.sin(x), 0, np.deg2rad(thetamax))        
