@@ -62,7 +62,7 @@ pars.add_argument('-c', '--cutoff', type=float, nargs='?',
                   default=None, help='Value of the geocutoff')
                   
 pars.add_argument('-s', '--solarmodulation', type=float, nargs='?',
-                  default=650., help='solar modulation (550 min and 1100 max) [650]')
+                  default=520., help='solar modulation [520]')
 
 pars.add_argument('-o', '--outputpath', type=str, nargs='?',
                   default="./", help='output path')
