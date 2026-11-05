@@ -385,7 +385,7 @@ class LEOBackgroundGenerator:
         k = (EarthRadius + self.Alt)/(EarthRadius + 40.)  # 40 km = AtmosphereHeight used for HorizonAngle
         mu_e = lambda x: np.sqrt(np.clip(1. - (k*np.sin(x))**2, 0., 1.))
         I_albedo = quad(lambda x: 2.*np.pi*(1. + mu_e(x))*np.sin(x), 0, np.deg2rad(thetamax))        
-		C_int = part1*I_albedo[0]*(1./np.sqrt(1. + ((R_c/part2)**2.)))
+        C_int = part1*I_albedo[0]*(1./np.sqrt(1. + ((R_c/part2)**2.)))
         Flux[E > 2000] = 0.
         Flux[E <= 2000] = C_int*f_E/omega
 
